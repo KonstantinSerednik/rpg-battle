@@ -1,0 +1,238 @@
+import type { Effect } from '../types/game';
+
+export const EFFECTS = {
+  // Дебаффы
+  BLEEDING: {
+    id: 'bleed',
+    name: 'Кровотечение',
+    description: 'Наносит 5 урона каждый ход',
+    icon: 'bleed',
+    duration: 3,
+    maxStacks: 3,
+    currentStacks: 1,
+    priority: 5,
+    type: 'debuff' as const,
+    dotDamage: 5,
+    modifiers: {},
+  },
+  BURNING: {
+    id: 'burn',
+    name: 'Горение',
+    description: 'Наносит 8 урона каждый ход',
+    icon: 'burn',
+    duration: 2,
+    maxStacks: 2,
+    currentStacks: 1,
+    priority: 5,
+    type: 'debuff' as const,
+    dotDamage: 8,
+    modifiers: {},
+  },
+  POISON: {
+    id: 'poison',
+    name: 'Отравление',
+    description: 'Наносит 3 урона каждый ход, снижает лечение на 20%',
+    icon: 'poison',
+    duration: 4,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 5,
+    type: 'debuff' as const,
+    dotDamage: 3,
+    modifiers: {
+      healingMultiplier: 0.8,
+    },
+  },
+  STUN: {
+    id: 'stun',
+    name: 'Оглушение',
+    description: 'Пропуск следующего хода',
+    icon: 'stun',
+    duration: 1,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 10,
+    type: 'control' as const,
+    isStun: true,
+    modifiers: {},
+  },
+  SLOW: {
+    id: 'slow',
+    name: 'Замедление',
+    description: 'Снижает получаемую энергию на 30%',
+    icon: 'slow',
+    duration: 2,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 3,
+    type: 'debuff' as const,
+    modifiers: {
+      energyGainMultiplier: 0.7,
+    },
+  },
+  VULNERABILITY: {
+    id: 'vulnerability',
+    name: 'Уязвимость',
+    description: 'Увеличивает получаемый урон на 25%',
+    icon: 'vulnerability',
+    duration: 2,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 7,
+    type: 'debuff' as const,
+    modifiers: {
+      damageReduction: -0.25, // отрицательное снижение = увеличение урона
+    },
+  },
+
+  // Баффы
+  STRENGTH: {
+    id: 'strength',
+    name: 'Сила',
+    description: 'Увеличивает наносимый урон на 20%',
+    icon: 'strength',
+    duration: 3,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 6,
+    type: 'buff' as const,
+    modifiers: {
+      damageMultiplier: 1.2,
+    },
+  },
+  REGENERATION: {
+    id: 'regeneration',
+    name: 'Регенерация',
+    description: 'Восстанавливает 10 HP каждый ход',
+    icon: 'regeneration',
+    duration: 3,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 4,
+    type: 'buff' as const,
+    hotHealing: 10,
+    modifiers: {},
+  },
+  PROTECTION: {
+    id: 'protection',
+    name: 'Защита',
+    description: 'Уменьшает получаемый урон на 30%',
+    icon: 'protection',
+    duration: 2,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 8,
+    type: 'buff' as const,
+    modifiers: {
+      damageReduction: 0.3,
+    },
+  },
+  ENERGY_BOOST: {
+    id: 'energy_boost',
+    name: 'Прилив энергии',
+    description: 'Увеличивает получаемую энергию на 50%',
+    icon: 'energy_boost',
+    duration: 2,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 5,
+    type: 'buff' as const,
+    modifiers: {
+      energyGainMultiplier: 1.5,
+    },
+  },
+
+  // Щиты
+  SHIELD: {
+    id: 'shield',
+    name: 'Щит',
+    description: 'Поглощает 20 урона',
+    icon: 'shield',
+    duration: 999, // практически бесконечно, пока не снимется уроном
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 9,
+    type: 'shield' as const,
+    shieldAmount: 20,
+    modifiers: {},
+  },
+  DIVINE_SHIELD: {
+    id: 'divine_shield',
+    name: 'Божественный щит',
+    description: 'Поглощает 40 урона',
+    icon: 'divine_shield',
+    duration: 999,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 9,
+    type: 'shield' as const,
+    shieldAmount: 40,
+    modifiers: {},
+  },
+
+  // Специальные
+  INVISIBILITY: {
+    id: 'invisibility',
+    name: 'Невидимость',
+    description: 'Шанс уклонения от следующей атаки 50%',
+    icon: 'invisibility',
+    duration: 1,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 10,
+    type: 'special' as const,
+    modifiers: {
+      dodgeChance: 0.5,
+    },
+  },
+  REFLECT: {
+    id: 'reflect',
+    name: 'Отражение',
+    description: 'Отражает 30% полученного урона обратно атакующему',
+    icon: 'reflect',
+    duration: 2,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 7,
+    type: 'special' as const,
+    reflectPercent: 0.3,
+    modifiers: {},
+  },
+} satisfies Record<string, Effect>;
+
+// Вспомогательные функции для создания копий эффектов с кастомными параметрами
+export function createEffect(base: Effect, overrides: Partial<Effect>): Effect {
+  return { ...base, ...overrides, currentStacks: 1 };
+}
+
+export function createDotEffect(damage: number, duration: number, name?: string): Effect {
+  return {
+    id: `dot_${Date.now()}`,
+    name: name || `Периодический урон ${damage}`,
+    description: `Наносит ${damage} урона каждый ход`,
+    icon: 'dot',
+    duration,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 5,
+    type: 'debuff',
+    dotDamage: damage,
+    modifiers: {},
+  };
+}
+
+export function createShieldEffect(amount: number, duration?: number): Effect {
+  return {
+    id: `shield_${Date.now()}`,
+    name: `Щит ${amount}`,
+    description: `Поглощает ${amount} урона`,
+    icon: 'shield',
+    duration: duration ?? 999,
+    maxStacks: 1,
+    currentStacks: 1,
+    priority: 9,
+    type: 'shield',
+    shieldAmount: amount,
+    modifiers: {},
+  };
+}

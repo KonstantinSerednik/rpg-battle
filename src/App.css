@@ -1,0 +1,553 @@
+/* App.css */
+.arena-container {
+  background-color: #111;
+  color: #fff;
+  min-height: 100vh;
+  padding: 20px;
+  text-align: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.box {
+  padding: 20px;
+  background: #1e1e1e;
+  border-radius: 12px;
+  border: 1px solid #333;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.btn {
+  padding: 10px 15px;
+  margin: 5px;
+  cursor: pointer;
+  border-radius: 6px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+  filter: brightness(1.2);
+  transform: translateY(-2px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ult { background: #7c3aed; }
+.btn-ai { background: #dc2626; }
+.btn-confirm { background: #16a34a; margin-top: 20px; }
+
+.stats-grid {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.player-card {
+  width: 280px;
+  transition: transform 0.3s, border 0.3s;
+}
+
+.active-turn {
+  border: 2px solid #fbbf24;
+  transform: scale(1.05);
+}
+
+.bar-bg {
+  background: #000;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 5px 0;
+}
+
+.hp-bar { background: #22c55e; height: 100%; transition: width 0.4s ease-out; }
+.energy-bar { background: #3b82f6; height: 100%; transition: width 0.4s ease-out; }
+
+.log-text {
+  color: #fbbf24;
+  font-size: 1.1rem;
+  font-weight: bold;
+  height: 2.5rem;
+}
+
+/* Анимации для полосок */
+.hp-bar.damage {
+  animation: hp-damage-flash 0.5s ease-out;
+}
+
+@keyframes hp-damage-flash {
+  0% { background-color: #ef4444; }
+  50% { background-color: #fca5a5; }
+  100% { background-color: #22c55e; }
+}
+
+.hp-bar.heal {
+  animation: hp-heal-flash 0.5s ease-out;
+}
+
+@keyframes hp-heal-flash {
+  0% { background-color: #10b981; }
+  50% { background-color: #a7f3d0; }
+  100% { background-color: #22c55e; }
+}
+
+.energy-bar.change {
+  animation: energy-change 0.5s ease-out;
+}
+
+@keyframes energy-change {
+  0% { background-color: #8b5cf6; }
+  50% { background-color: #c4b5fd; }
+  100% { background-color: #3b82f6; }
+}
+
+/* Всплывающие числа */
+.damage-popup {
+  position: absolute;
+  color: #ef4444;
+  font-weight: bold;
+  font-size: 1.2rem;
+  pointer-events: none;
+  animation: popup-up 1s ease-out forwards;
+  text-shadow: 0 0 3px black;
+}
+
+.heal-popup {
+  position: absolute;
+  color: #10b981;
+  font-weight: bold;
+  font-size: 1.2rem;
+  pointer-events: none;
+  animation: popup-up 1s ease-out forwards;
+  text-shadow: 0 0 3px black;
+}
+
+@keyframes popup-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-30px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+}
+
+/* Стили для WinnerScreen */
+.winner-screen .winner-card {
+  margin: 20px 0;
+  padding: 15px;
+  background: #2a2a2a;
+  border-radius: 10px;
+  border: 1px solid #444;
+}
+
+.winner-screen .winner-class {
+  color: #a78bfa;
+  font-style: italic;
+  margin: 5px 0;
+}
+
+.winner-screen .winner-stats {
+  display: flex;
+  justify-content: space-around;
+  margin: 15px 0;
+}
+
+.winner-screen .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.winner-screen .stat span {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.winner-screen .stat strong {
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.winner-screen .congrats {
+  font-size: 1.1rem;
+  color: #fbbf24;
+  margin: 15px 0;
+}
+
+.winner-screen .hint {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 10px;
+}
+
+/* ========== Визуальные улучшения ========== */
+
+/* ModeSelection */
+.mode-selection {
+  text-align: center;
+}
+
+.mode-subtitle {
+  margin-bottom: 1.5rem;
+  color: #aaa;
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  min-width: 200px;
+  justify-content: center;
+}
+
+.mode-btn-pvp {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.mode-btn-pvc {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.mode-btn:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* CharacterSelection */
+.character-selection .selection-subtitle {
+  color: #aaa;
+  margin-bottom: 1.5rem;
+}
+
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.character-card {
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.character-card:hover {
+  background: #2d2d2d;
+  border-color: #60a5fa;
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.character-icon {
+  background: #3b3b3b;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.character-info h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.character-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.character-stats .stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+/* AttackSelection */
+.attack-selection .selection-subtitle {
+  color: #aaa;
+  margin-bottom: 1.5rem;
+}
+
+.attack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.attack-card {
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.attack-card:hover {
+  background: #2d2d2d;
+  border-color: #60a5fa;
+  transform: translateY(-3px);
+}
+
+.attack-card.selected {
+  border-color: #3b82f6;
+  background: #1e3a8a;
+}
+
+.attack-card.ultimate {
+  border-left: 4px solid #7c3aed;
+}
+
+.attack-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.attack-icon {
+  background: #3b3b3b;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attack-title {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.attack-title strong {
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+.attack-type {
+  font-size: 0.8rem;
+  color: #aaa;
+  background: #333;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+.check-icon {
+  color: #10b981;
+}
+
+.attack-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.attack-stats .stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.stat-label {
+  color: #aaa;
+}
+
+.stat-value {
+  color: #fff;
+  font-weight: bold;
+}
+
+.energy-gain {
+  color: #10b981;
+}
+
+.energy-cost {
+  color: #ef4444;
+}
+
+.confirm-section {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.btn-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  font-size: 1.1rem;
+}
+
+.selection-hint {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  color: #aaa;
+}
+
+/* Анимации */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.box {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .mode-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  .mode-btn {
+    width: 100%;
+    max-width: 300px;
+  }
+  .character-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  .attack-grid {
+    grid-template-columns: 1fr;
+  }
+  .player-card {
+    width: 100%;
+  }
+  .stats-grid {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+/* ========== Дополнительные CSS-анимации ========== */
+
+/* Пульсация для ультимейт-атак */
+@keyframes pulse-ultimate {
+  0% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(124, 58, 237, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+}
+
+.attack-card.ultimate {
+  animation: pulse-ultimate 2s infinite;
+}
+
+/* Анимация встряски при получении урона */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.damage-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Свечение для активного хода */
+@keyframes glow-turn {
+  0% { box-shadow: 0 0 5px #fbbf24; }
+  50% { box-shadow: 0 0 20px #fbbf24; }
+  100% { box-shadow: 0 0 5px #fbbf24; }
+}
+
+.active-turn {
+  animation: glow-turn 1.5s infinite;
+}
+
+/* Плавное появление элементов */
+.fade-in {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Анимация выбора атаки */
+@keyframes select-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.attack-card.selected {
+  animation: select-pop 0.3s ease-out;
+}
+
+/* Анимация перехода между этапами игры */
+.stage-transition {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+/* Анимация наведения на карточку персонажа с подскоком */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.character-card:hover {
+  animation: bounce 0.5s ease;
+}
+
+/* Анимация заполнения полосы здоровья */
+@keyframes fill-bar {
+  from { width: 0%; }
+  to { width: var(--target-width); }
+}
+
+.hp-bar, .energy-bar {
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
