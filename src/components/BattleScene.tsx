@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGame } from '../context/GameContext';
 import EffectIcons from './EffectIcons';
+import { EffectManager } from '../effects/EffectManager';
 
 interface Popup {
   id: number;
@@ -17,22 +18,103 @@ const BattleScene: React.FC = () => {
   const [prevHp, setPrevHp] = useState<[number, number]>([p1?.hp ?? 0, p2?.hp ?? 0]);
   const [prevEnergy, setPrevEnergy] = useState<[number, number]>([p1?.energy ?? 0, p2?.energy ?? 0]);
 
+  // Функция выбора атаки для ИИ с учётом эффектов
+  const aiChooseAttack = (aiPlayer: typeof p2, humanPlayer: typeof p1): number => {
+    if (!aiPlayer || !humanPlayer) return 0;
+    const effectManager = new EffectManager();
+    const availableAttacks = aiPlayer.attacks
+      .map((attack, index) => ({ ...attack, index }))
+      .filter(a => a.uses > 0 && (!a.isUltimate || aiPlayer.energy >= (a.energyCost || 0)));
+
+    if (availableAttacks.length === 0) return -1; // нет доступных атак
+
+    // Оценка каждой атаки
+    const scoredAttacks = availableAttacks.map(attack => {
+      let score = 0;
+
+      // 1. Урон (чем больше, тем лучше)
+      if (attack.damage > 0) {
+        // Базовый урон
+        score += attack.damage * 2;
+        // Учёт модификаторов урона атакующего и защиты цели
+        const attackerModifiers = effectManager.calculateModifiers(aiPlayer);
+        const targetModifiers = effectManager.calculateModifiers(humanPlayer);
+        let damage = attack.damage * attackerModifiers.damageMultiplier * (1 - targetModifiers.damageReduction);
+        // Если у цели есть уязвимость, увеличиваем ценность
+        const hasVulnerability = humanPlayer.effects.some(e => e.id === 'vulnerability');
+        if (hasVulnerability) damage *= 1.3;
+        score += damage;
+      }
+
+      // 2. Исцеление (ценно, если у ИИ мало HP)
+      if (attack.damage < 0) {
+        const healing = -attack.damage;
+        // Чем меньше HP у ИИ, тем ценнее исцеление
+        const hpRatio = aiPlayer.hp / aiPlayer.max_hp;
+        const healingNeed = 1 - hpRatio; // от 0 до 1
+        score += healing * healingNeed * 3;
+      }
+
+      // 3. Эффекты атаки
+      if (attack.appliedEffects && attack.appliedEffects.length > 0) {
+        attack.appliedEffects.forEach(effect => {
+          // Приоритет эффектов
+          if (effect.type === 'debuff' || effect.type === 'control') {
+            // Дебаффы на противника ценны
+            score += 15;
+            if (effect.isStun) score += 30; // оглушение очень ценно
+          }
+          if (effect.type === 'buff') {
+            // Баффы на себя ценны, если у ИИ низкие показатели
+            score += 10;
+          }
+          if (effect.shieldAmount) {
+            score += effect.shieldAmount * 0.5;
+          }
+          // Периодический урон/лечение
+          if (effect.dotDamage) score += effect.dotDamage * effect.duration * 0.8;
+          if (effect.hotHealing) score += effect.hotHealing * effect.duration * 0.5;
+        });
+      }
+
+      // 4. Энергетическая эффективность
+      if (attack.isUltimate) {
+        // Ультимейты ценны, если у ИИ много энергии
+        const energyRatio = aiPlayer.energy / 100;
+        score += 20 * energyRatio;
+      } else {
+        // Обычные атаки дают энергию
+        score += (attack.energyGain || 0) * 0.2;
+      }
+
+      // 5. Шанс применения эффекта
+      const chance = attack.effectChance ?? 1.0;
+      score *= chance;
+
+      // 6. Штраф за малое количество использований (чтобы не тратить последний заряд без необходимости)
+      if (attack.uses <= 1) score *= 0.7;
+
+      return { ...attack, score };
+    });
+
+    // Выбрать атаку с максимальным счётом
+    const bestAttack = scoredAttacks.reduce((best, current) =>
+      current.score > best.score ? current : best
+    );
+    return bestAttack.index;
+  };
+
   // логика хода бота
   useEffect(() => {
     if (turn === 2 && gameMode === 'PvC' && p2) {
       const timer = setTimeout(() => {
-        const availableAttacks = p2.attacks
-          .map((attack, index) => ({ ...attack, index }))
-          .filter(a => a.uses > 0 && (!a.isUltimate || p2.energy >= (a.energyCost || 0)));
-
-        if (availableAttacks.length === 0) {
+        const attackIndex = aiChooseAttack(p2, p1);
+        if (attackIndex === -1) {
           dispatch({ type: 'SET_TURN', payload: 1 });
           dispatch({ type: 'SET_LOG', payload: 'ИИ пропускает ход' });
           return;
         }
-
-        const randomAttack = availableAttacks[Math.floor(Math.random() * availableAttacks.length)];
-        dispatch({ type: 'ATTACK', payload: { attacker: 2, attackIndex: randomAttack.index } });
+        dispatch({ type: 'ATTACK', payload: { attacker: 2, attackIndex } });
       }, 1000);
 
       return () => clearTimeout(timer);

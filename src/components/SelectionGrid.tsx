@@ -173,10 +173,38 @@ export const renderAttackCard = (
     return 'Урон';
   };
 
+  // Иконки эффектов
+  const getEffectIcon = (icon: string) => {
+    const iconMap: Record<string, string> = {
+      bleed: '🩸',
+      burn: '🔥',
+      poison: '☠️',
+      stun: '💫',
+      slow: '🐌',
+      vulnerability: '🎯',
+      strength: '💪',
+      regeneration: '❤️‍🩹',
+      protection: '🛡️',
+      energy_boost: '⚡',
+      shield: '🛡️',
+      divine_shield: '✨',
+      invisibility: '👻',
+      reflect: '↩️',
+      dot: '⏳',
+    };
+    return iconMap[icon] || '⭐';
+  };
+
+  const hasEffects = attack.appliedEffects && attack.appliedEffects.length > 0;
+  const effectTooltip = hasEffects
+    ? `Эффекты: ${attack.appliedEffects!.map(e => e.name).join(', ')} (шанс ${(attack.effectChance ?? 1) * 100}%)`
+    : '';
+
   return (
     <button
       className={`attack-card ${attack.isUltimate ? 'ultimate' : ''} ${isSelected ? 'selected' : ''}`}
       onClick={onClick}
+      title={effectTooltip}
     >
       <div className="attack-header">
         <div className="attack-icon">{getAttackIcon(attack)}</div>
@@ -209,6 +237,31 @@ export const renderAttackCard = (
           <div className="stat">
             <span className="stat-label">Стоимость энергии:</span>
             <span className="stat-value energy-cost">{attack.energyCost}</span>
+          </div>
+        )}
+        {hasEffects && (
+          <div className="stat" style={{ marginTop: '5px', borderTop: '1px dashed #444', paddingTop: '5px' }}>
+            <span className="stat-label">Эффекты:</span>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+              {attack.appliedEffects!.map((effect, idx) => (
+                <span
+                  key={idx}
+                  title={`${effect.name}: ${effect.description}`}
+                  style={{
+                    fontSize: '0.75rem',
+                    backgroundColor: '#374151',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                  }}
+                >
+                  <span>{getEffectIcon(effect.icon)}</span>
+                  <span>{effect.name}</span>
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>
