@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { ALL_ATTACKS, PRESETS } from '../db';
+import React, { useCallback, useMemo } from 'react';
+import { ALL_ATTACKS, PRESETS, getSecretAttacks } from '../db';
 import { useGame } from '../context/GameContext';
 import type { Attack } from '../db';
 import SelectionGrid, { renderAttackCard, selectRandomAttacks } from './SelectionGrid';
@@ -14,8 +14,10 @@ const AttackSelection: React.FC<AttackSelectionProps> = ({ forPlayer }) => {
   const player = forPlayer === 1 ? state.p1 : state.p2;
   const className = player?.name || '';
 
-  const classAttacks = ALL_ATTACKS.filter(a => a.className === className);
-  const selectedAttacks = player?.attacks || [];
+  const classAttacks = ALL_ATTACKS.filter(a =>
+    a.className === className && !a.isSecret
+  );
+  const selectedAttacks = useMemo(() => player?.attacks || [], [player?.attacks]);
 
   const handleToggle = useCallback((attack: Attack) => {
     if (!player) return;
@@ -61,15 +63,31 @@ const AttackSelection: React.FC<AttackSelectionProps> = ({ forPlayer }) => {
           ? availablePresets[Math.floor(Math.random() * availablePresets.length)]
           : PRESETS[0];
         const aiAttacks = selectRandomAttacks(randomPreset.name, ALL_ATTACKS);
-        const aiCharacter = { ...randomPreset, attacks: aiAttacks, effects: [], shields: 0, isStunned: false };
+        const secretAttacks = getSecretAttacks(randomPreset.name);
+        const allAiAttacks = [...aiAttacks, ...secretAttacks];
+        const aiCharacter = { ...randomPreset, attacks: allAiAttacks, effects: [], shields: 0, isStunned: false };
         dispatch({ type: 'SET_P2', payload: aiCharacter });
         dispatch({ type: 'SET_STAGE', payload: 'battle' });
         dispatch({ type: 'SET_LOG', payload: `ИИ выбрал ${randomPreset.name} и ${aiAttacks.length} атак` });
       } else {
+        // Добавляем секретные атаки к персонажу игрока 1
+        if (player) {
+          const secretAttacks = getSecretAttacks(player.name);
+          const allAttacks = [...selectedAttacks, ...secretAttacks];
+          const updatedPlayer = { ...player, attacks: allAttacks };
+          dispatch({ type: 'SET_P1', payload: updatedPlayer });
+        }
         dispatch({ type: 'SET_STAGE', payload: 'p2_char' });
         dispatch({ type: 'SET_LOG', payload: 'Игрок 1 выбрал атаки' });
       }
     } else {
+      // Добавляем секретные атаки к персонажу игрока 2
+      if (player) {
+        const secretAttacks = getSecretAttacks(player.name);
+        const allAttacks = [...selectedAttacks, ...secretAttacks];
+        const updatedPlayer = { ...player, attacks: allAttacks };
+        dispatch({ type: 'SET_P2', payload: updatedPlayer });
+      }
       dispatch({ type: 'SET_STAGE', payload: 'battle' });
       dispatch({ type: 'SET_LOG', payload: 'Игрок 2 выбрал атаки' });
     }
@@ -106,6 +124,7 @@ const AttackSelection: React.FC<AttackSelectionProps> = ({ forPlayer }) => {
       maxSelection={4}
       requiresConfirmation={true}
       onConfirm={handleConfirm}
+      onBack={handleBack}
       selectionStatus={getSelectionStatus()}
     />
   );

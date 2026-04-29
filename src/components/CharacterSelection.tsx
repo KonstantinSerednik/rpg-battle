@@ -1,5 +1,5 @@
 import React from 'react';
-import { PRESETS, ALL_ATTACKS } from '../db';
+import { PRESETS, ALL_ATTACKS, getSecretAttacks } from '../db';
 import { useGame } from '../context/GameContext';
 import type { CharacterPreset } from '../db';
 import SelectionGrid, { renderCharacterCard, selectRandomAttacks } from './SelectionGrid';
@@ -22,7 +22,9 @@ const CharacterSelection: React.FC<CharacterSelectionProps> = ({ forPlayer }) =>
       if (gameMode === 'PvC') {
         // Автоматический выбор атак для робота
         const attacks = selectRandomAttacks(preset.name, ALL_ATTACKS);
-        const character = { ...preset, attacks, effects: [], shields: 0, isStunned: false };
+        const secretAttacks = getSecretAttacks(preset.name);
+        const allAttacks = [...attacks, ...secretAttacks];
+        const character = { ...preset, attacks: allAttacks, effects: [], shields: 0, isStunned: false };
         dispatch({ type: 'SET_P2', payload: character });
         dispatch({ type: 'SET_STAGE', payload: 'battle' });
         dispatch({ type: 'SET_LOG', payload: `ИИ выбрал ${preset.name} и ${attacks.length} атак` });

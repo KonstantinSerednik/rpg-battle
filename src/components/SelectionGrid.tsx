@@ -108,6 +108,7 @@ const SelectionGrid = <T,>({
 };
 
 // Вспомогательные функции для рендеринга карточек персонажей
+// eslint-disable-next-line react-refresh/only-export-components
 export const renderCharacterCard = (
   preset: CharacterPreset,
   _isSelected: boolean,
@@ -159,6 +160,7 @@ export const renderCharacterCard = (
 };
 
 // Вспомогательные функции для рендеринга карточек атак
+// eslint-disable-next-line react-refresh/only-export-components
 export const renderAttackCard = (
   attack: Attack,
   isSelected: boolean,
@@ -205,8 +207,9 @@ export const renderAttackCard = (
   };
 
   const hasEffects = attack.appliedEffects && attack.appliedEffects.length > 0;
+  const effectChancePercent = Math.round((attack.effectChance ?? 1) * 100);
   const effectTooltip = hasEffects
-    ? `Эффекты: ${attack.appliedEffects!.map(e => e.name).join(', ')} (шанс ${(attack.effectChance ?? 1) * 100}%)`
+    ? `Эффекты: ${attack.appliedEffects!.map(e => e.name).join(', ')} (шанс ${effectChancePercent}%)`
     : '';
 
   return (
@@ -256,7 +259,7 @@ export const renderAttackCard = (
                 <div
                   key={idx}
                   className={`effect-badge ${effect.type}`}
-                  title={`${effect.name}: ${effect.description}\nШанс срабатывания: ${(attack.effectChance ?? 1) * 100}%`}
+                  title={`${effect.name}: ${effect.description}\nШанс срабатывания: ${effectChancePercent}%`}
                 >
                   <span className="effect-icon">{getEffectIcon(effect.icon)}</span>
                   <span className="effect-name">{effect.name}</span>
@@ -274,8 +277,11 @@ export const renderAttackCard = (
 };
 
 // Утилитная функция для случайного выбора атак (вынесена из дублирующегося кода)
+// eslint-disable-next-line react-refresh/only-export-components
 export const selectRandomAttacks = (className: string, allAttacks: Attack[]): Attack[] => {
-  const classAttacks = allAttacks.filter(a => a.className === className);
+  const classAttacks = allAttacks.filter(a =>
+    a.className === className && !a.isSecret
+  );
   const normals = classAttacks.filter(a => !a.isUltimate);
   const ults = classAttacks.filter(a => a.isUltimate);
 

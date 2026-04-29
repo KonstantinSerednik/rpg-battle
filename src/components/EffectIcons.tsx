@@ -40,6 +40,14 @@ const EffectIcons: React.FC<EffectIconsProps> = ({ effects }) => {
       invisibility: '👻',
       reflect: '↩️',
       dot: '⏳',
+      devastation: '💀',
+      berserk: '😠',
+      corrosion: '🧪',
+      winged_ally: '🦅',
+      arcane: '🔮',
+      bear_form: '🐻',
+      cleanse: '✨',
+      resurrection: '❤️',
     };
     return iconMap[icon] || '⭐';
   };

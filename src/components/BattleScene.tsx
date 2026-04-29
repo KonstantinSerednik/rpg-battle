@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useGame } from '../context/GameContext';
 import EffectIcons from './EffectIcons';
-import { EffectManager } from '../effects/EffectManager';
+import { chooseAiAttack } from '../ai/aiLogic';
 
 interface Popup {
   id: number;
@@ -18,91 +18,11 @@ const BattleScene: React.FC = () => {
   const [prevHp, setPrevHp] = useState<[number, number]>([p1?.hp ?? 0, p2?.hp ?? 0]);
   const [prevEnergy, setPrevEnergy] = useState<[number, number]>([p1?.energy ?? 0, p2?.energy ?? 0]);
 
-  // Функция выбора атаки для ИИ с учётом эффектов
-  const aiChooseAttack = (aiPlayer: typeof p2, humanPlayer: typeof p1): number => {
+  // Функция выбора атаки для ИИ с учётом эффектов (использует отдельный модуль)
+  const aiChooseAttack = useCallback((aiPlayer: typeof p2, humanPlayer: typeof p1): number => {
     if (!aiPlayer || !humanPlayer) return 0;
-    const effectManager = new EffectManager();
-    const availableAttacks = aiPlayer.attacks
-      .map((attack, index) => ({ ...attack, index }))
-      .filter(a => a.uses > 0 && (!a.isUltimate || aiPlayer.energy >= (a.energyCost || 0)));
-
-    if (availableAttacks.length === 0) return -1; // нет доступных атак
-
-    // Оценка каждой атаки
-    const scoredAttacks = availableAttacks.map(attack => {
-      let score = 0;
-
-      // 1. Урон (чем больше, тем лучше)
-      if (attack.damage > 0) {
-        // Базовый урон
-        score += attack.damage * 2;
-        // Учёт модификаторов урона атакующего и защиты цели
-        const attackerModifiers = effectManager.calculateModifiers(aiPlayer);
-        const targetModifiers = effectManager.calculateModifiers(humanPlayer);
-        let damage = attack.damage * attackerModifiers.damageMultiplier * (1 - targetModifiers.damageReduction);
-        // Если у цели есть уязвимость, увеличиваем ценность
-        const hasVulnerability = humanPlayer.effects.some(e => e.id === 'vulnerability');
-        if (hasVulnerability) damage *= 1.3;
-        score += damage;
-      }
-
-      // 2. Исцеление (ценно, если у ИИ мало HP)
-      if (attack.damage < 0) {
-        const healing = -attack.damage;
-        // Чем меньше HP у ИИ, тем ценнее исцеление
-        const hpRatio = aiPlayer.hp / aiPlayer.max_hp;
-        const healingNeed = 1 - hpRatio; // от 0 до 1
-        score += healing * healingNeed * 3;
-      }
-
-      // 3. Эффекты атаки
-      if (attack.appliedEffects && attack.appliedEffects.length > 0) {
-        attack.appliedEffects.forEach(effect => {
-          // Приоритет эффектов
-          if (effect.type === 'debuff' || effect.type === 'control') {
-            // Дебаффы на противника ценны
-            score += 15;
-            if (effect.isStun) score += 30; // оглушение очень ценно
-          }
-          if (effect.type === 'buff') {
-            // Баффы на себя ценны, если у ИИ низкие показатели
-            score += 10;
-          }
-          if (effect.shieldAmount) {
-            score += effect.shieldAmount * 0.5;
-          }
-          // Периодический урон/лечение
-          if (effect.dotDamage) score += effect.dotDamage * effect.duration * 0.8;
-          if (effect.hotHealing) score += effect.hotHealing * effect.duration * 0.5;
-        });
-      }
-
-      // 4. Энергетическая эффективность
-      if (attack.isUltimate) {
-        // Ультимейты ценны, если у ИИ много энергии
-        const energyRatio = aiPlayer.energy / 100;
-        score += 20 * energyRatio;
-      } else {
-        // Обычные атаки дают энергию
-        score += (attack.energyGain || 0) * 0.2;
-      }
-
-      // 5. Шанс применения эффекта
-      const chance = attack.effectChance ?? 1.0;
-      score *= chance;
-
-      // 6. Штраф за малое количество использований (чтобы не тратить последний заряд без необходимости)
-      if (attack.uses <= 1) score *= 0.7;
-
-      return { ...attack, score };
-    });
-
-    // Выбрать атаку с максимальным счётом
-    const bestAttack = scoredAttacks.reduce((best, current) =>
-      current.score > best.score ? current : best
-    );
-    return bestAttack.index;
-  };
+    return chooseAiAttack(aiPlayer, humanPlayer);
+  }, []);
 
   // логика хода бота
   useEffect(() => {
@@ -119,7 +39,7 @@ const BattleScene: React.FC = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [turn, gameMode, p2, dispatch]);
+  }, [turn, gameMode, p2, dispatch, aiChooseAttack, p1]);
 
   const addPopup = (text: string, type: 'damage' | 'heal' | 'energy', x: number, y: number) => {
     const id = Date.now() + Math.random();
@@ -142,6 +62,7 @@ const BattleScene: React.FC = () => {
         const text = type === 'damage' ? `${-diff}` : `+${diff}`;
         const x = i === 0 ? 100 : 400;
         const y = 200;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         addPopup(text, type, x, y);
       }
     }
@@ -168,6 +89,24 @@ const BattleScene: React.FC = () => {
     console.log(`[BattleScene] handleAttack index=${index}, turn=${turn}`);
     if (turn === 2 && gameMode === 'PvC') return; // робот ходит автоматически
     dispatch({ type: 'ATTACK', payload: { attacker: turn, attackIndex: index } });
+  };
+
+  // Проверяет, можно ли показывать секретную атаку
+  const canShowSecretAttack = (player: typeof p1, attack: any): boolean => {
+    if (!attack.isSecret) return true;
+    // Условия для секретных атак:
+    // 1. HP ниже 30%
+    const hpRatio = player.hp / player.max_hp;
+    if (hpRatio < 0.3) return true;
+    // 2. Наличие определённых эффектов в зависимости от класса
+    const hasBerserk = player.effects.some(e => e.name === 'BERSERK');
+    const hasBearForm = player.effects.some(e => e.name === 'BEAR_FORM');
+    // Для воина - эффект BERSERK
+    if (player.name === 'Воин' && hasBerserk) return true;
+    // Для друида - эффект BEAR_FORM
+    if (player.name === 'Друид' && hasBearForm) return true;
+    // Другие классы пока не имеют секретных атак
+    return false;
   };
 
   const renderPlayerCard = (player: typeof p1, isActive: boolean, playerNumber: 1 | 2) => (
@@ -225,7 +164,7 @@ const BattleScene: React.FC = () => {
               Навыки (дают энергию):
             </p>
             {player.attacks
-              .filter(a => !a.isUltimate)
+              .filter(a => !a.isUltimate && (canShowSecretAttack(player, a) || !a.isSecret))
               .map((a, ai) => {
                 const realIndex = player.attacks.findIndex(at => at.name === a.name);
                 return (
@@ -246,7 +185,7 @@ const BattleScene: React.FC = () => {
               Ультимейт (тратит энергию):
             </p>
             {player.attacks
-              .filter(a => a.isUltimate)
+              .filter(a => a.isUltimate && (canShowSecretAttack(player, a) || !a.isSecret))
               .map((a, ai) => {
                 const realIndex = player.attacks.findIndex(at => at.name === a.name);
                 const canAfford = player.energy >= (a.energyCost || 0);

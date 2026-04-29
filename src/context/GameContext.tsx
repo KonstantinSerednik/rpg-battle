@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useReducer } from 'react';
 import type { ReactNode } from 'react';
 import type { Character, GameMode, Stage, GameState, Effect } from '../types/game';
-import { EffectManager } from '../effects/EffectManager';
+import { executeTurnPipeline, processTurnStartEffects } from '../effects/turnPipeline';
+import { applyEffect, removeEffect, cleanse } from '../effects/effectLogic';
+import { processEffectOnApply, processEffectOnRemove } from '../effects/effectRegistry';
+import { normalizeGameState } from '../utils/normalize';
 
 type GameAction =
   | { type: 'SET_MODE'; payload: GameMode }
@@ -29,145 +32,60 @@ const initialState: GameState = {
 };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
-  const effectManager = new EffectManager();
-
   const getCharacter = (player: 1 | 2): Character | null =>
     player === 1 ? state.p1 : state.p2;
 
-  const updateCharacter = (player: 1 | 2, updates: Partial<Character>): GameState => {
-    const char = getCharacter(player);
-    if (!char) return state;
-    const updated = { ...char, ...updates };
+  const updateCharacter = (player: 1 | 2, newCharacter: Character): GameState => {
     return player === 1
-      ? { ...state, p1: updated }
-      : { ...state, p2: updated };
+      ? { ...state, p1: newCharacter }
+      : { ...state, p2: newCharacter };
   };
 
   switch (action.type) {
     case 'SET_MODE':
-      return { ...state, gameMode: action.payload };
+      return normalizeGameState({ ...state, gameMode: action.payload });
     case 'SET_STAGE':
-      return { ...state, stage: action.payload };
+      return normalizeGameState({ ...state, stage: action.payload });
     case 'SET_P1':
-      return { ...state, p1: action.payload };
+      return normalizeGameState({ ...state, p1: action.payload });
     case 'SET_P2':
-      return { ...state, p2: action.payload };
+      return normalizeGameState({ ...state, p2: action.payload });
     case 'SET_TURN':
-      return { ...state, turn: action.payload };
+      return normalizeGameState({ ...state, turn: action.payload });
     case 'SET_LOG':
-      return { ...state, log: action.payload };
+      return normalizeGameState({ ...state, log: action.payload });
     case 'ATTACK': {
       const { attacker, attackIndex } = action.payload;
       const attackerChar = attacker === 1 ? state.p1 : state.p2;
       const targetChar = attacker === 1 ? state.p2 : state.p1;
+      
       if (!attackerChar || !targetChar) return state;
 
-      // Проверка оглушения
-      if (attackerChar.isStunned) {
-        return {
-          ...state,
-          log: `${attackerChar.name} оглушён и пропускает ход!`,
-          turn: attacker === 1 ? 2 : 1,
-        };
-      }
+      // Используем линеаризованный конвейер хода
+      const turnResult = executeTurnPipeline({
+        attacker: attackerChar,
+        target: targetChar,
+        attackIndex,
+        gameState: { p1: state.p1, p2: state.p2, turn: state.turn },
+      });
 
-      const attack = attackerChar.attacks[attackIndex];
-      if (attack.uses <= 0) return state; // Атака недоступна
+      const { updatedAttacker, updatedTarget, logMessages, targetDead } = turnResult;
 
-      // Применить эффекты атаки к цели (с учётом шанса)
-      console.log(`[ATTACK] ${attackerChar.name} uses ${attack.name}, appliedEffects:`, attack.appliedEffects);
-      if (attack.appliedEffects && attack.appliedEffects.length > 0) {
-        attack.appliedEffects.forEach(effect => {
-          const chance = attack.effectChance ?? 1.0;
-          console.log(`[ATTACK] Effect ${effect.name} chance ${chance}`);
-          if (Math.random() < chance) {
-            effectManager.applyEffect(targetChar, effect, attackerChar);
-          } else {
-            console.log(`[ATTACK] Effect ${effect.name} missed due to chance`);
-          }
-        });
-      }
-
-      // Рассчитать модификаторы атакующего и цели
-      const attackerModifiers = effectManager.calculateModifiers(attackerChar);
-      const targetModifiers = effectManager.calculateModifiers(targetChar);
-
-      // 1. Расчёт изменений HP с учётом модификаторов
-      let targetHpChange = 0;
-      let attackerHpChange = 0;
-      if (attack.damage > 0) {
-        // Урон цели
-        let damage = attack.damage;
-        damage *= attackerModifiers.damageMultiplier;
-        damage *= (1 - targetModifiers.damageReduction);
-        // Учесть щиты
-        damage = effectManager.absorbDamageWithShields(targetChar, damage);
-        targetHpChange = -damage;
-      } else if (attack.damage < 0) {
-        // Исцеление атакующего
-        let healing = -attack.damage;
-        healing *= attackerModifiers.healingMultiplier;
-        attackerHpChange = healing;
-      }
-
-      const newTargetHp = Math.max(0, targetChar.hp + targetHpChange);
-      const newAttackerHp = Math.min(attackerChar.max_hp, attackerChar.hp + attackerHpChange);
-
-      // 2. Расчёт изменений энергии с учётом модификаторов
-      let newEnergy = attackerChar.energy;
-      if (attack.isUltimate) {
-        const cost = attack.energyCost ?? 0;
-        newEnergy = Math.max(0, attackerChar.energy - cost);
-      } else {
-        const gain = (attack.energyGain ?? 0) * attackerModifiers.energyGainMultiplier;
-        newEnergy = Math.min(100, attackerChar.energy + gain);
-      }
-
-      // 3. Уменьшение использований атаки
-      const newAttacks = attackerChar.attacks.map((a, i) =>
-        i === attackIndex ? { ...a, uses: a.uses - 1 } : a
-      );
-
-      // 4. Обновить эффекты (тик) для атакующего и цели
-      effectManager.tickEffects(attackerChar);
-      effectManager.tickEffects(targetChar);
-
-      const updatedAttacker: Character = {
-        ...attackerChar,
-        hp: newAttackerHp,
-        energy: newEnergy,
-        attacks: newAttacks,
-      };
-      const updatedTarget: Character = {
-        ...targetChar,
-        hp: newTargetHp,
-      };
-
-      const newP1 = attacker === 1 ? updatedAttacker : updatedTarget;
-      const newP2 = attacker === 2 ? updatedAttacker : updatedTarget;
-
-      // 5. Проверка победы
-      const targetDead = newTargetHp <= 0;
+      // Определяем следующий ход и стадию
       const nextTurn = targetDead ? state.turn : (attacker === 1 ? 2 : 1);
       const nextStage = targetDead ? 'winner' : state.stage;
 
-      // 6. Формирование лога
-      let logMessage = `${attackerChar.name} применил ${attack.name}!`;
-      if (attack.damage > 0) {
-        logMessage += ` Нанесён урон ${-targetHpChange}.`;
-      } else if (attack.damage < 0) {
-        logMessage += ` Восстановлено ${attackerHpChange} HP.`;
-      }
-      if (attack.isUltimate) {
-        logMessage += ` Потрачено ${attack.energyCost ?? 0} энергии.`;
-      } else {
-        logMessage += ` Получено ${attack.energyGain ?? 0} энергии.`;
-      }
-      if (targetDead) {
-        logMessage += ` ${targetChar.name} повержен!`;
+      // Формируем итоговое сообщение лога
+      let logMessage = logMessages.join(' ');
+      if (logMessages.length === 0) {
+        logMessage = `${attackerChar.name} применил атаку!`;
       }
 
-      return {
+      // Создаём новое состояние
+      const newP1 = attacker === 1 ? updatedAttacker : updatedTarget;
+      const newP2 = attacker === 2 ? updatedAttacker : updatedTarget;
+
+      const newState = {
         ...state,
         p1: newP1,
         p2: newP2,
@@ -175,34 +93,43 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         stage: nextStage,
         log: logMessage,
       };
+
+      // Нормализуем числовые данные
+      return normalizeGameState(newState);
     }
     case 'EFFECT_APPLY': {
       const { target, effect } = action.payload;
       const char = getCharacter(target);
       if (!char) return state;
-      effectManager.applyEffect(char, effect);
-      return updateCharacter(target, { ...char });
+      let newChar = applyEffect(char, effect);
+      newChar = processEffectOnApply(newChar, effect, undefined, { p1: state.p1, p2: state.p2, turn: state.turn });
+      return normalizeGameState(updateCharacter(target, newChar));
     }
     case 'EFFECT_TICK': {
       const { target } = action.payload;
       const char = getCharacter(target);
       if (!char) return state;
-      effectManager.tickEffects(char);
-      return updateCharacter(target, { ...char });
+      // Используем processTurnStartEffects из turnPipeline
+      const newChar = processTurnStartEffects(char);
+      return normalizeGameState(updateCharacter(target, newChar));
     }
     case 'EFFECT_REMOVE': {
       const { target, effectId } = action.payload;
       const char = getCharacter(target);
       if (!char) return state;
-      effectManager.removeEffect(char, effectId);
-      return updateCharacter(target, { ...char });
+      const effectToRemove = char.effects.find(e => e.id === effectId);
+      let newChar = removeEffect(char, effectId);
+      if (effectToRemove) {
+        newChar = processEffectOnRemove(newChar, effectToRemove, undefined, { p1: state.p1, p2: state.p2, turn: state.turn });
+      }
+      return normalizeGameState(updateCharacter(target, newChar));
     }
     case 'CLEANSE': {
       const { target, effectType } = action.payload;
       const char = getCharacter(target);
       if (!char) return state;
-      effectManager.cleanse(char, effectType);
-      return updateCharacter(target, { ...char });
+      const newChar = cleanse(char, effectType);
+      return normalizeGameState(updateCharacter(target, newChar));
     }
     case 'RESET':
       return initialState;
@@ -228,6 +155,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useGame() {
   const context = useContext(GameContext);
   if (context === undefined) {
