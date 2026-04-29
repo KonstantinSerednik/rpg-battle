@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sword, Sparkles, Target, Eye, Shield, Flame, Heart, Zap, Check } from 'lucide-react';
+import { Sword, Sparkles, Target, Eye, Shield, Flame, Heart, Zap, Check, ArrowLeft } from 'lucide-react';
 import type { CharacterPreset, Attack } from '../db';
 
 export type SelectionType = 'character' | 'attack';
@@ -26,6 +26,8 @@ export interface SelectionGridProps<T> {
   onConfirm?: () => void;
   /** Сообщение о статусе выбора */
   selectionStatus?: string;
+  /** Функция для возврата назад (если передана, отображается кнопка "Назад") */
+  onBack?: () => void;
 }
 
 /**
@@ -44,6 +46,7 @@ const SelectionGrid = <T,>({
   requiresConfirmation = false,
   onConfirm,
   selectionStatus,
+  onBack,
 }: SelectionGridProps<T>) => {
   const handleItemClick = (item: T) => {
     // Для выбора персонажа - всегда выбираем новый (заменяем предыдущий)
@@ -83,16 +86,22 @@ const SelectionGrid = <T,>({
         })}
       </div>
 
-      {requiresConfirmation && onConfirm && (
-        <div className="confirm-section">
+      <div className="navigation-section">
+        {onBack && (
+          <button className="btn btn-back" onClick={onBack}>
+            <ArrowLeft size={20} />
+            <span>Назад</span>
+          </button>
+        )}
+        {requiresConfirmation && onConfirm && (
           <button className="btn btn-confirm" onClick={onConfirm}>
             <Check size={20} />
             <span>Готово</span>
           </button>
-          {selectionStatus && (
-            <p className="selection-hint">{selectionStatus}</p>
-          )}
-        </div>
+        )}
+      </div>
+      {requiresConfirmation && onConfirm && selectionStatus && (
+        <p className="selection-hint">{selectionStatus}</p>
       )}
     </div>
   );
@@ -240,26 +249,21 @@ export const renderAttackCard = (
           </div>
         )}
         {hasEffects && (
-          <div className="stat" style={{ marginTop: '5px', borderTop: '1px dashed #444', paddingTop: '5px' }}>
+          <div className="effects-container">
             <span className="stat-label">Эффекты:</span>
-            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
               {attack.appliedEffects!.map((effect, idx) => (
-                <span
+                <div
                   key={idx}
-                  title={`${effect.name}: ${effect.description}`}
-                  style={{
-                    fontSize: '0.75rem',
-                    backgroundColor: '#374151',
-                    borderRadius: '4px',
-                    padding: '2px 6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '2px',
-                  }}
+                  className={`effect-badge ${effect.type}`}
+                  title={`${effect.name}: ${effect.description}\nШанс срабатывания: ${(attack.effectChance ?? 1) * 100}%`}
                 >
-                  <span>{getEffectIcon(effect.icon)}</span>
-                  <span>{effect.name}</span>
-                </span>
+                  <span className="effect-icon">{getEffectIcon(effect.icon)}</span>
+                  <span className="effect-name">{effect.name}</span>
+                  {effect.duration && effect.duration < 999 && (
+                    <span className="effect-duration">{effect.duration}</span>
+                  )}
+                </div>
               ))}
             </div>
           </div>

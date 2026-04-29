@@ -421,12 +421,34 @@
   text-align: center;
 }
 
+.navigation-section {
+  margin-top: 2rem;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 .btn-confirm {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1.1rem;
+}
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  font-size: 1.1rem;
+  background: #6b7280;
+}
+
+.btn-back:hover {
+  background: #4b5563;
 }
 
 .selection-hint {
@@ -550,4 +572,95 @@
 
 .hp-bar, .energy-bar {
   transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Стилизованные плашки эффектов */
+.effect-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+  cursor: help;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.effect-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%);
+  z-index: -1;
+}
+
+.effect-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+
+.effect-badge.debuff {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: 1px solid #f87171;
+}
+
+.effect-badge.buff {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: 1px solid #34d399;
+}
+
+.effect-badge.shield {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border: 1px solid #60a5fa;
+}
+
+.effect-badge.control {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  border: 1px solid #a78bfa;
+}
+
+.effect-badge.special {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: 1px solid #fbbf24;
+}
+
+.effect-badge .effect-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.effect-badge .effect-name {
+  white-space: nowrap;
+}
+
+.effect-badge .effect-duration {
+  margin-left: 4px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+}
+
+/* Контейнер для группы эффектов */
+.effects-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #444;
 }

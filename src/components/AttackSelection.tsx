@@ -75,6 +75,14 @@ const AttackSelection: React.FC<AttackSelectionProps> = ({ forPlayer }) => {
     }
   }, [selectedAttacks, forPlayer, gameMode, player, dispatch]);
 
+  const handleBack = useCallback(() => {
+    if (forPlayer === 1) {
+      dispatch({ type: 'SET_STAGE', payload: 'p1_char' });
+    } else {
+      dispatch({ type: 'SET_STAGE', payload: 'p2_char' });
+    }
+  }, [forPlayer, dispatch]);
+
   const getSelectionStatus = () => {
     if (selectedAttacks.length < 4) {
       return `Осталось выбрать ${4 - selectedAttacks.length} атак`;
