@@ -1,6 +1,9 @@
 import type { Character, Effect } from '../types/game';
 import { ALL_ATTACKS } from '../db';
 
+/** Максимальное количество уникальных эффектов, которые может иметь персонаж */
+export const MAX_EFFECTS = 5;
+
 export interface Modifiers {
   damageMultiplier: number;
   damageReduction: number;
@@ -46,9 +49,9 @@ export function applyEffect(
       // Иначе оставить старый (ничего не меняем)
     }
   } else {
-    // Проверить ограничение на количество эффектов (максимум 3 разных эффекта)
+    // Проверить ограничение на количество эффектов (максимум MAX_EFFECTS разных эффектов)
     const uniqueEffectIds = new Set(newTarget.effects.map(e => e.id));
-    if (uniqueEffectIds.size >= 3) {
+    if (uniqueEffectIds.size >= MAX_EFFECTS) {
       // Найти эффект с наименьшим приоритетом для удаления
       let lowestPriority = Infinity;
       let lowestPriorityIndex = -1;
@@ -60,7 +63,7 @@ export function applyEffect(
       });
       // Если нашли, удаляем его
       if (lowestPriorityIndex >= 0) {
-        console.log(`[effectLogic] Достигнут лимит 3 эффектов, удаляем эффект ${newTarget.effects[lowestPriorityIndex].name} с приоритетом ${lowestPriority}`);
+        console.log(`[effectLogic] Достигнут лимит ${MAX_EFFECTS} эффектов, удаляем эффект ${newTarget.effects[lowestPriorityIndex].name} с приоритетом ${lowestPriority}`);
         newTarget.effects = newTarget.effects.filter((_, idx) => idx !== lowestPriorityIndex);
       }
     }
@@ -80,6 +83,17 @@ export function applyEffect(
 
   // Обработка специальных эффектов
   if (effect.id === 'berserk') {
+    // Сохранить оригинальные атаки в объекте эффекта перед заменой
+    const berserkEffectIndex = newTarget.effects.findIndex(e => e.id === 'berserk');
+    if (berserkEffectIndex >= 0 && !newTarget.effects[berserkEffectIndex].originalAttacks) {
+      // Сохраняем глубокую копию текущих атак
+      const originalAttacks = newTarget.attacks.map(a => ({ ...a }));
+      newTarget.effects[berserkEffectIndex] = {
+        ...newTarget.effects[berserkEffectIndex],
+        originalAttacks,
+      };
+    }
+
     // Установить максимальное HP = 100 и восстановить HP
     newTarget.max_hp = 100;
     if (newTarget.hp > newTarget.max_hp) {
@@ -96,6 +110,17 @@ export function applyEffect(
   }
 
   if (effect.id === 'bear_form') {
+    // Сохранить оригинальные атаки в объекте эффекта перед заменой
+    const bearEffectIndex = newTarget.effects.findIndex(e => e.id === 'bear_form');
+    if (bearEffectIndex >= 0 && !newTarget.effects[bearEffectIndex].originalAttacks) {
+      // Сохраняем глубокую копию текущих атак
+      const originalAttacks = newTarget.attacks.map(a => ({ ...a }));
+      newTarget.effects[bearEffectIndex] = {
+        ...newTarget.effects[bearEffectIndex],
+        originalAttacks,
+      };
+    }
+
     // Заменить атаки на медвежьи атаки
     const bearAttack1 = ALL_ATTACKS.find(a => a.name === 'Удар медвежьей лапы');
     const bearAttack2 = ALL_ATTACKS.find(a => a.name === 'Укуси меня пчела');
@@ -172,6 +197,16 @@ export function tickEffects(target: Character): Character {
     // Если длительность истекла, пометить на удаление
     if (effect.duration <= 0) {
       effectsToRemove.push(effect.id);
+    }
+  });
+
+  // Восстановить оригинальные атаки для удаляемых эффектов, которые их заменяли
+  effectsToRemove.forEach(effectId => {
+    const effect = newTarget.effects.find(e => e.id === effectId);
+    if (effect?.originalAttacks) {
+      // Восстанавливаем глубокую копию сохранённых атак
+      newTarget.attacks = effect.originalAttacks.map(a => ({ ...a }));
+      console.log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
     }
   });
 
@@ -265,6 +300,26 @@ export function calculateFinalDamage(
 }
 
 /**
+ * Рассчитать урон только по модификаторам (без учёта щитов).
+ * Возвращает rawDamage, который потом должен быть уменьшен щитами.
+ */
+export function calculateRawDamage(
+  attacker: Character,
+  target: Character,
+  baseDamage: number
+): number {
+  const attackerMods = calculateModifiers(attacker);
+  const targetMods = calculateModifiers(target);
+
+  let rawDamage = baseDamage * attackerMods.damageMultiplier;
+  rawDamage = rawDamage * (1 - targetMods.damageReduction);
+  rawDamage = Math.round(rawDamage);
+
+  console.log(`[effectLogic] calculateRawDamage: base=${baseDamage}, attackerMult=${attackerMods.damageMultiplier}, targetReduction=${targetMods.damageReduction}, raw=${rawDamage}`);
+  return rawDamage;
+}
+
+/**
  * Проверить наличие эффекта по id.
  */
 export function hasEffect(target: Character, effectId: string): boolean {
@@ -289,6 +344,11 @@ export function removeEffect(target: Character, effectId: string): Character {
     if (effect.onRemove) {
       console.log(`Effect ${effect.name} removed from ${newTarget.name}`);
     }
+    // Восстановить оригинальные атаки, если эффект их заменял
+    if (effect.originalAttacks) {
+      newTarget.attacks = effect.originalAttacks.map(a => ({ ...a }));
+      console.log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
+    }
     // Убрать щит, если эффект был щитом
     if (effect.shieldAmount) {
       newTarget.shields = Math.max(0, newTarget.shields - effect.shieldAmount);
@@ -309,6 +369,17 @@ export function cleanse(target: Character, effectType?: string): Character {
     effects: target.effects.map(e => ({ ...e })),
     attacks: target.attacks.map(a => ({ ...a })),
   };
+
+  // Определить, какие эффекты будут удалены
+  const effectsToRemove = newTarget.effects.filter(e =>
+    effectType ? e.type === effectType : e.type === 'debuff'
+  );
+  // Найти первый эффект с сохранёнными атаками
+  const effectWithOriginalAttacks = effectsToRemove.find(e => e.originalAttacks);
+  if (effectWithOriginalAttacks) {
+    newTarget.attacks = effectWithOriginalAttacks.originalAttacks!.map(a => ({ ...a }));
+    console.log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effectWithOriginalAttacks.name} у ${newTarget.name} (очищение)`);
+  }
 
   if (effectType) {
     newTarget.effects = newTarget.effects.filter(e => e.type !== effectType);

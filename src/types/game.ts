@@ -33,6 +33,9 @@ export interface Effect {
   onTurnStart?: string;
   onTurnEnd?: string;
   onRemove?: string;
+
+  // Сохранённые оригинальные атаки для эффектов, которые их заменяют (например, bear_form)
+  originalAttacks?: Attack[];
 }
 
 export interface Character extends CharacterPreset {

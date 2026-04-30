@@ -1,23 +1,7 @@
 import type { Character } from '../types/game';
 import type { Attack } from '../db';
 import { calculateFinalDamage } from '../effects/effectLogic';
-
-/**
- * Проверяет, можно ли использовать секретную атаку.
- * Секретная атака доступна, если:
- * - HP ниже 30% ИЛИ
- * - есть соответствующий эффект (BERSERK для воина, BEAR_FORM для друида)
- */
-function canUseSecretAttack(player: Character, attack: Attack): boolean {
-  if (!attack.isSecret) return true;
-  const hpRatio = player.hp / player.max_hp;
-  if (hpRatio < 0.3) return true;
-  const hasBerserk = player.effects.some(e => e.name === 'BERSERK');
-  const hasBearForm = player.effects.some(e => e.name === 'BEAR_FORM');
-  if (player.name === 'Воин' && hasBerserk) return true;
-  if (player.name === 'Друид' && hasBearForm) return true;
-  return false;
-}
+import { canUseSecretAttack } from '../utilities/secretAttack';
 
 export interface ScoredAttack {
   index: number;
@@ -41,17 +25,18 @@ export function chooseAiAttack(
 
   if (availableAttacks.length === 0) return -1; // нет доступных атак
 
+  const prioritizeDefense = shouldPrioritizeDefense(aiPlayer, humanPlayer);
+
   // Оценка каждой атаки
   const scoredAttacks = availableAttacks.map(attack => {
     let score = 0;
 
     // 1. Урон (чем больше, тем лучше)
     if (attack.damage > 0) {
-      // Базовый урон
-      score += attack.damage * 2;
       // Учёт модификаторов урона атакующего и защиты цели, включая щиты
       const damage = calculateFinalDamage(aiPlayer, humanPlayer, attack.damage);
-      score += damage;
+      // Используем финальный урон и добавляем базовый урон как бонус 1 к 1
+      score += damage + attack.damage;
     }
 
     // 2. Исцеление (ценно, если у ИИ мало HP)
@@ -101,6 +86,19 @@ export function chooseAiAttack(
 
     // 6. Штраф за малое количество использований (чтобы не тратить последний заряд без необходимости)
     if (attack.uses <= 1) score *= 0.7;
+
+    // 7. Приоритет защиты/исцеления при опасности
+    if (prioritizeDefense) {
+      const isDefensiveOrHealing = attack.damage < 0 ||
+        (attack.appliedEffects && attack.appliedEffects.some(e =>
+          e.type === 'buff' || e.shieldAmount || e.hotHealing
+        ));
+      if (isDefensiveOrHealing) {
+        score *= 1.5;
+      } else {
+        score *= 0.7;
+      }
+    }
 
     return { index: attack.index, score, attack };
   });
@@ -153,9 +151,9 @@ export function getAiDebugInfo(
   const scores: ScoredAttack[] = availableAttacks.map(attack => {
     let score = 0;
     if (attack.damage > 0) {
-      score += attack.damage * 2;
       const damage = calculateFinalDamage(aiPlayer, humanPlayer, attack.damage);
-      score += damage;
+      // Используем финальный урон и добавляем базовый урон как бонус 1 к 1
+      score += damage + attack.damage;
     }
     if (attack.damage < 0) {
       const healing = -attack.damage;

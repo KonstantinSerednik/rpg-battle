@@ -1,10 +1,12 @@
 import type { Character } from '../types/game';
+import { EFFECTS } from '../data/effects';
 import {
   tickEffects,
   applyEffect,
   calculateModifiers,
-  calculateFinalDamage,
+  calculateRawDamage,
   updateShieldsAfterDamage,
+  hasEffect,
 } from './effectLogic';
 import {
   processEffectOnTurnStart,
@@ -61,6 +63,9 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
     attacker = processEffectOnTurnStart(attacker, effect, undefined, gameState);
   });
 
+  // Сохраняем состояние оглушения до тика эффектов
+  const wasStunned = attacker.isStunned;
+
   // 3. Тик эффектов атакующего (уменьшение длительности, периодический урон/лечение)
   attacker = tickEffects(attacker);
   
@@ -76,11 +81,10 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
     };
   }
 
-  // 5. Проверка контроля: если персонаж оглушен, пропускаем ход
-  if (attacker.isStunned) {
+  // 5. Проверка контроля: если персонаж был оглушен до тика, пропускаем ход
+  if (wasStunned) {
     logMessages.push(`${attacker.name} оглушён и пропускает ход!`);
-    // Тик эффектов цели (даже если ход пропущен)
-    target = tickEffects(target);
+    // Цель НЕ тикаем (DoT/HoT сработают только в начале её хода)
     return {
       updatedAttacker: attacker,
       updatedTarget: target,
@@ -91,7 +95,7 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
   }
 
   // 6. Получение атаки
-  const attack = attacker.attacks[attackIndex];
+  let attack = attacker.attacks[attackIndex];
   if (!attack || attack.uses <= 0) {
     logMessages.push(`${attacker.name} пытается использовать недоступную атаку!`);
     return {
@@ -102,6 +106,15 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
       resurrected: false,
     };
   }
+
+  // Уменьшение uses атаки на исходном массиве
+  attacker = {
+    ...attacker,
+    attacks: attacker.attacks.map((a, idx) =>
+      idx === attackIndex ? { ...a, uses: a.uses - 1 } : a
+    ),
+  };
+  attack = attacker.attacks[attackIndex];
 
   // 7. Применение эффектов атаки (с учётом шанса)
   if (attack.appliedEffects && attack.appliedEffects.length > 0) {
@@ -128,16 +141,86 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
   let targetHpChange = 0;
   let attackerHpChange = 0;
   
-  if (attack.damage > 0) {
-    // Урон цели
-    const damage = calculateFinalDamage(attacker, target, attack.damage);
-    targetHpChange = -damage;
-    target = updateShieldsAfterDamage(target, damage);
-    logMessages.push(`${attacker.name} наносит ${damage} урона ${target.name}`);
+  const hasWingedAlly = hasEffect(attacker, 'winged_ally');
+  
+  // Объявляем переменные для расчёта урона
+  let baseDamage = attack.damage;
+  let instantWin = false;
+  
+  // Специальная атака "Божественный луч"
+  if (attack.name === 'Божественный луч') {
+    baseDamage = attacker.energy;
+    logMessages.push(`Целитель направляет божественную энергию, нанося ${baseDamage} урона`);
+  }
+  
+  if (attack.damage > 0 || attack.name === 'Божественный луч') {
+    // Урон цели: сначала вычисляем rawDamage (без щитов)
+    
+    // Специальная атака "Призыв зверя"
+    if (attack.name === 'Призыв зверя') {
+      const roll = Math.random();
+      if (roll < 0.1) {
+        // Кошка – мгновенная победа
+        logMessages.push('Призвана Кошка! Друид одерживает мгновенную победу!');
+        targetHpChange = -target.hp; // Устанавливаем HP цели в 0
+        instantWin = true;
+        // Пропускаем стандартный расчёт урона
+        baseDamage = 0;
+      } else if (roll < 0.45) {
+        // Волк – 20 урона + кровотечение
+        baseDamage = 20;
+        logMessages.push('Призван Волк! Наносит 20 урона и вызывает кровотечение.');
+        target = applyEffect(target, EFFECTS.BLEEDING);
+      } else {
+        // Медведь – 30 урона
+        baseDamage = 30;
+        logMessages.push('Призван Медведь! Наносит 30 урона.');
+      }
+    }
+    
+    // Специальная атака "Снайперский выстрел"
+    if (attack.name === 'Снайперский выстрел') {
+      const roll = Math.random();
+      if (roll < 0.1) {
+        // Критический выстрел - 300 урона
+        baseDamage = 300;
+        logMessages.push('Снайперский выстрел попадает точно в цель! Наносит 300 урона!');
+      } else {
+        // Обычный выстрел - 25 урона (уже установлено в базовом damage)
+        baseDamage = 25;
+        logMessages.push('Снайперский выстрел наносит 25 урона.');
+      }
+    }
+    
+    if (hasWingedAlly && !instantWin) {
+      baseDamage += 20;
+      logMessages.push(`Крылатый союзник добавляет 20 к урону!`);
+    }
+    
+    if (!instantWin) {
+      const rawDamage = calculateRawDamage(attacker, target, baseDamage);
+      // Поглощение щитами
+      const absorbed = Math.min(target.shields, rawDamage);
+      const finalDamage = rawDamage - absorbed;
+      targetHpChange = -finalDamage;
+      target = updateShieldsAfterDamage(target, rawDamage);
+      // Если щиты цели стали равны 0, удалить все эффекты с типом 'shield'
+      if (target.shields === 0) {
+        target.effects = target.effects.filter(e => e.type !== 'shield');
+      }
+      logMessages.push(`${attacker.name} наносит ${finalDamage} урона ${target.name}`);
+      if (absorbed > 0) {
+        logMessages.push(`Щиты поглотили ${absorbed} урона`);
+      }
+    }
   } else if (attack.damage < 0) {
     // Исцеление атакующего
     const attackerModifiers = calculateModifiers(attacker);
     let healing = -attack.damage;
+    if (hasWingedAlly) {
+      healing += 25;
+      logMessages.push(`Крылатый союзник добавляет 25 к исцелению!`);
+    }
     healing *= attackerModifiers.healingMultiplier;
     healing = Math.round(healing);
     attackerHpChange = healing;
@@ -169,23 +252,18 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
     logMessages.push(`Получено ${Math.round(gain)} энергии`);
   }
 
-  // 12. Уменьшение использований атаки
-  attacker.attacks[attackIndex] = { ...attack, uses: attack.uses - 1 };
-
-  // 13. Тик эффектов цели после получения урона
-  target = tickEffects(target);
-
-  // 14. Проверка воскрешения
+  // 13. Проверка воскрешения (мгновенное, без тика цели)
+  const resurrected = newTargetHp <= 0 && target.effects.some(e => e.id === 'resurrection');
   let finalTargetHp = newTargetHp;
   let finalTargetEffects = target.effects;
-  const resurrected = newTargetHp <= 0 && target.effects.some(e => e.id === 'resurrection');
+
   if (resurrected) {
     finalTargetHp = 55;
     finalTargetEffects = target.effects.filter(e => e.id !== 'resurrection');
     logMessages.push(`${target.name} воскрес с 55 HP!`);
   }
 
-  // 15. Обновление персонажей с нормализацией числовых данных
+  // 14. Обновление персонажей с нормализацией числовых данных
   const updatedAttacker: Character = {
     ...attacker,
     hp: Math.round(newAttackerHp),
@@ -198,7 +276,7 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
     effects: finalTargetEffects,
   };
 
-  // 16. Финальная проверка смерти цели
+  // 15. Финальная проверка смерти цели (после воскрешения)
   const targetDead = finalTargetHp <= 0 && !resurrected;
   if (targetDead) {
     logMessages.push(`${target.name} повержен!`);

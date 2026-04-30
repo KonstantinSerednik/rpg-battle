@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useGame } from '../context/GameContext';
 import EffectIcons from './EffectIcons';
 import { chooseAiAttack } from '../ai/aiLogic';
+import { canUseSecretAttack } from '../utilities/secretAttack';
+import type { Character } from '../types/game';
 
 interface Popup {
   id: number;
@@ -59,7 +61,7 @@ const BattleScene: React.FC = () => {
       const diff = newHp[i] - prevHp[i];
       if (diff !== 0) {
         const type = diff < 0 ? 'damage' : 'heal';
-        const text = type === 'damage' ? `${-diff}` : `+${diff}`;
+        const text = Math.abs(diff).toString();
         const x = i === 0 ? 100 : 400;
         const y = 200;
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -91,51 +93,39 @@ const BattleScene: React.FC = () => {
     dispatch({ type: 'ATTACK', payload: { attacker: turn, attackIndex: index } });
   };
 
-  // Проверяет, можно ли показывать секретную атаку
-  const canShowSecretAttack = (player: typeof p1, attack: any): boolean => {
-    if (!attack.isSecret) return true;
-    // Условия для секретных атак:
-    // 1. HP ниже 30%
-    const hpRatio = player.hp / player.max_hp;
-    if (hpRatio < 0.3) return true;
-    // 2. Наличие определённых эффектов в зависимости от класса
-    const hasBerserk = player.effects.some(e => e.name === 'BERSERK');
-    const hasBearForm = player.effects.some(e => e.name === 'BEAR_FORM');
-    // Для воина - эффект BERSERK
-    if (player.name === 'Воин' && hasBerserk) return true;
-    // Для друида - эффект BEAR_FORM
-    if (player.name === 'Друид' && hasBearForm) return true;
-    // Другие классы пока не имеют секретных атак
-    return false;
-  };
 
-  const renderPlayerCard = (player: typeof p1, isActive: boolean, playerNumber: 1 | 2) => (
-    <div className={`box player-card ${isActive ? 'active-turn' : ''}`} style={{ position: 'relative' }}>
-      <h4>
-        {player.name} {playerNumber === 2 && gameMode === 'PvC' && '🤖'}
-      </h4>
+  const renderPlayerCard = (player: Character, isActive: boolean, playerNumber: 1 | 2) => {
+    // Проверяем, есть ли у вражеского игрока эффект 'devastation'
+    const hasDevastation = player.effects.some(e => e.id === 'devastation');
+    const showHiddenHp = playerNumber === 2 && hasDevastation;
+    
+    return (
+      <div className={`box player-card ${isActive ? 'active-turn' : ''}`} style={{ position: 'relative' }}>
+        <h4>
+          {player.name} {playerNumber === 2 && gameMode === 'PvC' && '🤖'}
+        </h4>
 
-      {/* Полоска HP */}
-      <div className="bar-bg">
-        <div
-          className="hp-bar"
-          style={{ width: `${(player.hp / player.max_hp) * 100}%` }}
-        />
-      </div>
-      <p style={{ fontSize: '0.8rem', margin: '5px 0' }}>
-        HP: {player.hp}/{player.max_hp}
-      </p>
+        {/* Полоска HP */}
+        <div className="bar-bg">
+          <div
+            className="hp-bar"
+            style={{ width: `${(player.hp / player.max_hp) * 100}%` }}
+          />
+        </div>
+        <p style={{ fontSize: '0.8rem', margin: '5px 0' }}>
+          HP: {showHiddenHp ? '???/???' : `${player.hp}/${player.max_hp}`}
+        </p>
 
-      {/* Полоска ресурса */}
-      <div className="bar-bg">
-        <div
-          className="energy-bar"
-          style={{ width: `${(player.energy / 100) * 100}%` }}
-        />
-      </div>
-      <p style={{ fontSize: '0.8rem', margin: '5px 0', color: '#3b82f6' }}>
-        {player.resourceName}: {player.energy}/100
-      </p>
+        {/* Полоска ресурса */}
+        <div className="bar-bg">
+          <div
+            className="energy-bar"
+            style={{ width: `${(player.energy / 100) * 100}%` }}
+          />
+        </div>
+        <p style={{ fontSize: '0.8rem', margin: '5px 0', color: '#3b82f6' }}>
+          {player.resourceName}: {player.energy}/100
+        </p>
 
       {/* Щиты и оглушение */}
       {(player.shields > 0 || player.isStunned) && (
@@ -164,7 +154,7 @@ const BattleScene: React.FC = () => {
               Навыки (дают энергию):
             </p>
             {player.attacks
-              .filter(a => !a.isUltimate && (canShowSecretAttack(player, a) || !a.isSecret))
+              .filter(a => !a.isUltimate && (canUseSecretAttack(player, a) || !a.isSecret))
               .map((a, ai) => {
                 const realIndex = player.attacks.findIndex(at => at.name === a.name);
                 return (
@@ -185,7 +175,7 @@ const BattleScene: React.FC = () => {
               Ультимейт (тратит энергию):
             </p>
             {player.attacks
-              .filter(a => a.isUltimate && (canShowSecretAttack(player, a) || !a.isSecret))
+              .filter(a => a.isUltimate && (canUseSecretAttack(player, a) || !a.isSecret))
               .map((a, ai) => {
                 const realIndex = player.attacks.findIndex(at => at.name === a.name);
                 const canAfford = player.energy >= (a.energyCost || 0);
@@ -206,6 +196,7 @@ const BattleScene: React.FC = () => {
       )}
     </div>
   );
+}
 
   return (
     <div className="arena-container">
@@ -230,13 +221,13 @@ const BattleScene: React.FC = () => {
             {pop.text}
           </div>
         ))}
-        {renderPlayerCard(p1, turn === 1, 1)}
-        {renderPlayerCard(p2, turn === 2, 2)}
+        {renderPlayerCard(p1!, turn === 1, 1)}
+        {renderPlayerCard(p2!, turn === 2, 2)}
       </div>
 
       {state.stage === 'winner' && (
         <div className="box">
-          <h2>Победил {p1.hp > 0 ? p1.name : p2.name}! 🏆</h2>
+          <h2>Победил {p1!.hp > 0 ? p1!.name : p2!.name}! 🏆</h2>
           <button
             className="btn btn-confirm"
             onClick={() => dispatch({ type: 'RESET' })}

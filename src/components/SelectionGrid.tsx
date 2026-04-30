@@ -232,7 +232,7 @@ export const renderAttackCard = (
         <div className="stat">
           <span className="stat-label">{getDamageLabel(attack.damage)}:</span>
           <span className="stat-value" style={{ color: getDamageColor(attack.damage) }}>
-            {attack.damage > 0 ? `+${attack.damage}` : attack.damage}
+            {Math.abs(attack.damage)}
           </span>
         </div>
         <div className="stat">
