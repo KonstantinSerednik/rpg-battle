@@ -212,11 +212,28 @@ export const renderAttackCard = (
     ? `Эффекты: ${attack.appliedEffects!.map(e => e.name).join(', ')} (шанс ${effectChancePercent}%)`
     : '';
 
+  // Описание специальных механик урона
+  const getSpecialMechanicDescription = (attack: Attack): string => {
+    switch (attack.name) {
+      case 'Божественный луч':
+        return 'Наносит урон, равный текущей энергии целителя. Урон поглощается щитами.';
+      case 'Призыв зверя':
+        return 'Случайно призывает: Кошка (10% шанс) – мгновенная победа; Волк (35% шанс) – 20 урона + кровотечение; Медведь (55% шанс) – 30 урона.';
+      case 'Снайперский выстрел':
+        return '10% шанс нанести 300 урона, иначе 25 урона.';
+      default:
+        return '';
+    }
+  };
+
+  const specialMechanic = getSpecialMechanicDescription(attack);
+  const fullTooltip = [specialMechanic, effectTooltip].filter(Boolean).join('\n\n');
+
   return (
     <button
       className={`attack-card ${attack.isUltimate ? 'ultimate' : ''} ${isSelected ? 'selected' : ''}`}
       onClick={onClick}
-      title={effectTooltip}
+      title={fullTooltip}
     >
       <div className="attack-header">
         <div className="attack-icon">{getAttackIcon(attack)}</div>

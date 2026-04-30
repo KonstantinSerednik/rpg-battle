@@ -36,10 +36,14 @@ export function applyEffect(
     const existing = newTarget.effects[existingIndex];
     // Если есть стаки и не достигнут максимум
     if (existing.maxStacks && existing.currentStacks < existing.maxStacks) {
+      // Для эффектов ассасина сбрасываем длительность до базовой, для остальных - максимум
+      const newDuration = (effect.id === 'assassin_bleed' || effect.id === 'assassin_poison')
+        ? effect.duration
+        : Math.max(existing.duration, effect.duration);
       newTarget.effects[existingIndex] = {
         ...existing,
         currentStacks: existing.currentStacks + 1,
-        duration: Math.max(existing.duration, effect.duration),
+        duration: newDuration,
       };
     } else {
       // Заменить эффект, если новый имеет более высокий приоритет
@@ -112,13 +116,19 @@ export function applyEffect(
   if (effect.id === 'bear_form') {
     // Сохранить оригинальные атаки в объекте эффекта перед заменой
     const bearEffectIndex = newTarget.effects.findIndex(e => e.id === 'bear_form');
-    if (bearEffectIndex >= 0 && !newTarget.effects[bearEffectIndex].originalAttacks) {
-      // Сохраняем глубокую копию текущих атак
-      const originalAttacks = newTarget.attacks.map(a => ({ ...a }));
-      newTarget.effects[bearEffectIndex] = {
-        ...newTarget.effects[bearEffectIndex],
-        originalAttacks,
-      };
+    if (bearEffectIndex >= 0) {
+      const bearEffect = newTarget.effects[bearEffectIndex];
+      if (!bearEffect.originalAttacks) {
+        // Сохраняем глубокую копию текущих атак
+        const originalAttacks = newTarget.attacks.map(a => ({ ...a }));
+        newTarget.effects[bearEffectIndex] = {
+          ...bearEffect,
+          originalAttacks,
+        };
+        console.log(`[effectLogic] Сохранены оригинальные атаки для ${newTarget.name}: ${originalAttacks.map(a => a.name).join(', ')}`);
+      } else {
+        console.log(`[effectLogic] Оригинальные атаки уже сохранены для ${newTarget.name}`);
+      }
     }
 
     // Заменить атаки на медвежьи атаки
@@ -201,12 +211,20 @@ export function tickEffects(target: Character): Character {
   });
 
   // Восстановить оригинальные атаки для удаляемых эффектов, которые их заменяли
+  let attacksRestored = false;
   effectsToRemove.forEach(effectId => {
     const effect = newTarget.effects.find(e => e.id === effectId);
     if (effect?.originalAttacks) {
-      // Восстанавливаем глубокую копию сохранённых атак
-      newTarget.attacks = effect.originalAttacks.map(a => ({ ...a }));
-      console.log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
+      if (!attacksRestored) {
+        // Восстанавливаем глубокую копию сохранённых атак
+        newTarget.attacks = effect.originalAttacks.map(a => ({ ...a }));
+        console.log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
+        attacksRestored = true;
+      } else {
+        console.warn(`[effectLogic] Пропускаем восстановление атак для эффекта ${effect.name}, так как атаки уже восстановлены другим эффектом.`);
+      }
+    } else if (effect && (effect.id === 'bear_form' || effect.id === 'berserk')) {
+      console.warn(`[effectLogic] Эффект ${effect.name} истекает, но originalAttacks отсутствуют! Атаки могут не восстановиться.`);
     }
   });
 
@@ -348,6 +366,8 @@ export function removeEffect(target: Character, effectId: string): Character {
     if (effect.originalAttacks) {
       newTarget.attacks = effect.originalAttacks.map(a => ({ ...a }));
       console.log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
+    } else if (effect.id === 'bear_form' || effect.id === 'berserk') {
+      console.warn(`[effectLogic] Эффект ${effect.name} удаляется, но originalAttacks отсутствуют! Атаки могут остаться изменёнными.`);
     }
     // Убрать щит, если эффект был щитом
     if (effect.shieldAmount) {

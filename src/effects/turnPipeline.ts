@@ -146,54 +146,62 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
   // Объявляем переменные для расчёта урона
   let baseDamage = attack.damage;
   let instantWin = false;
+  let effectiveDamage = attack.damage;
   
   // Специальная атака "Божественный луч"
   if (attack.name === 'Божественный луч') {
+    effectiveDamage = attacker.energy;
     baseDamage = attacker.energy;
     logMessages.push(`Целитель направляет божественную энергию, нанося ${baseDamage} урона`);
   }
   
-  if (attack.damage > 0 || attack.name === 'Божественный луч') {
+  // Специальная атака "Призыв зверя"
+  if (attack.name === 'Призыв зверя') {
+    const roll = Math.random();
+    if (roll < 0.1) {
+      // Кошка – мгновенная победа
+      logMessages.push('Призвана Кошка! Друид одерживает мгновенную победу!');
+      targetHpChange = -target.hp; // Устанавливаем HP цели в 0
+      instantWin = true;
+      // Пропускаем стандартный расчёт урона
+      baseDamage = 0;
+      effectiveDamage = 0;
+    } else if (roll < 0.45) {
+      // Волк – 20 урона + кровотечение
+      baseDamage = 20;
+      effectiveDamage = 20;
+      logMessages.push('Призван Волк! Наносит 20 урона и вызывает кровотечение.');
+      target = applyEffect(target, EFFECTS.BLEEDING);
+    } else {
+      // Медведь – 30 урона
+      baseDamage = 30;
+      effectiveDamage = 30;
+      logMessages.push('Призван Медведь! Наносит 30 урона.');
+    }
+  }
+  
+  // Специальная атака "Снайперский выстрел"
+  if (attack.name === 'Снайперский выстрел') {
+    const roll = Math.random();
+    if (roll < 0.1) {
+      // Критический выстрел - 300 урона
+      baseDamage = 300;
+      effectiveDamage = 300;
+      logMessages.push('Снайперский выстрел попадает точно в цель! Наносит 300 урона!');
+    } else {
+      // Обычный выстрел - 25 урона (уже установлено в базовом damage)
+      baseDamage = 25;
+      effectiveDamage = 25;
+      logMessages.push('Снайперский выстрел наносит 25 урона.');
+    }
+  }
+  
+  if (effectiveDamage > 0 || attack.name === 'Призыв зверя') {
     // Урон цели: сначала вычисляем rawDamage (без щитов)
-    
-    // Специальная атака "Призыв зверя"
-    if (attack.name === 'Призыв зверя') {
-      const roll = Math.random();
-      if (roll < 0.1) {
-        // Кошка – мгновенная победа
-        logMessages.push('Призвана Кошка! Друид одерживает мгновенную победу!');
-        targetHpChange = -target.hp; // Устанавливаем HP цели в 0
-        instantWin = true;
-        // Пропускаем стандартный расчёт урона
-        baseDamage = 0;
-      } else if (roll < 0.45) {
-        // Волк – 20 урона + кровотечение
-        baseDamage = 20;
-        logMessages.push('Призван Волк! Наносит 20 урона и вызывает кровотечение.');
-        target = applyEffect(target, EFFECTS.BLEEDING);
-      } else {
-        // Медведь – 30 урона
-        baseDamage = 30;
-        logMessages.push('Призван Медведь! Наносит 30 урона.');
-      }
-    }
-    
-    // Специальная атака "Снайперский выстрел"
-    if (attack.name === 'Снайперский выстрел') {
-      const roll = Math.random();
-      if (roll < 0.1) {
-        // Критический выстрел - 300 урона
-        baseDamage = 300;
-        logMessages.push('Снайперский выстрел попадает точно в цель! Наносит 300 урона!');
-      } else {
-        // Обычный выстрел - 25 урона (уже установлено в базовом damage)
-        baseDamage = 25;
-        logMessages.push('Снайперский выстрел наносит 25 урона.');
-      }
-    }
     
     if (hasWingedAlly && !instantWin) {
       baseDamage += 20;
+      effectiveDamage += 20;
       logMessages.push(`Крылатый союзник добавляет 20 к урону!`);
     }
     
