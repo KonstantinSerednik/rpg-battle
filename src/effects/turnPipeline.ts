@@ -4,10 +4,10 @@ import {
   tickEffects,
   applyEffect,
   calculateModifiers,
-  calculateRawDamage,
   updateShieldsAfterDamage,
   hasEffect,
 } from './effectLogic';
+import { calculateFinalDamageWithPipeline, calculateStat } from './statPipeline';
 import {
   processEffectOnTurnStart,
   processEffectOnApply,
@@ -121,6 +121,21 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
     attack.appliedEffects.forEach(effect => {
       const chance = attack.effectChance ?? 1.0;
       if (Math.random() < chance) {
+        // Специальная обработка для эффекта очищения
+        if (effect.id === 'cleanse') {
+          // Очищение с шансом 65% (дополнительный шанс поверх общего шанса атаки)
+          if (Math.random() < 0.65) {
+            // Очищаем цель атаки
+            target.effects = [];
+            target.isStunned = false;
+            logMessages.push(`Очищение сработало! ${target.name} очищен от всех эффектов.`);
+          } else {
+            logMessages.push(`Очищение не сработало (шанс 65% не прошёл).`);
+          }
+          // Не добавляем эффект очищения в массив эффектов цели
+          return;
+        }
+        
         const isDebuffOrControl = effect.type === 'debuff' || effect.type === 'control';
         const effectTarget = isDebuffOrControl ? target : attacker;
         const source = isDebuffOrControl ? attacker : undefined;
@@ -206,10 +221,26 @@ export function executeTurnPipeline(context: TurnContext): TurnResult {
     }
     
     if (!instantWin) {
-      const rawDamage = calculateRawDamage(attacker, target, baseDamage);
-      // Поглощение щитами
-      const absorbed = Math.min(target.shields, rawDamage);
-      const finalDamage = rawDamage - absorbed;
+      // Вычисляем rawDamage (урон до щитов) с использованием конвейера характеристик
+      const attackerDamage = calculateStat({
+        baseValue: baseDamage,
+        character: attacker,
+        statType: 'damage',
+      });
+      const targetDamageReduction = calculateStat({
+        baseValue: 0,
+        character: target,
+        statType: 'damageReduction',
+      });
+      let rawDamage = attackerDamage * (1 - targetDamageReduction);
+      rawDamage = Math.round(rawDamage);
+      
+      // Финальный урон с учётом щитов (уже включает поглощение щитов)
+      const finalDamage = calculateFinalDamageWithPipeline(attacker, target, baseDamage);
+      
+      // Поглощённый урон (разница между rawDamage и finalDamage, но не отрицательный)
+      const absorbed = Math.max(0, rawDamage - finalDamage);
+      
       targetHpChange = -finalDamage;
       target = updateShieldsAfterDamage(target, rawDamage);
       // Если щиты цели стали равны 0, удалить все эффекты с типом 'shield'

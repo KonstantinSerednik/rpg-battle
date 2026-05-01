@@ -1,4 +1,5 @@
 import type { Character, Effect } from '../types/game';
+import { log } from '../utils/logger';
 
 export type EffectCallback = (
   target: Character,
@@ -31,7 +32,7 @@ export type EffectCallbackKey = typeof EffectCallbackKey[keyof typeof EffectCall
 export const effectRegistry: EffectRegistry = {
   // Пример: эффект воскрешения
   [EffectCallbackKey.RESURRECTION]: (target, _effect) => {
-    console.log(`[effectRegistry] resurrection callback for ${target.name}`);
+    log(`[effectRegistry] resurrection callback for ${target.name}`);
     // Воскрешение уже обрабатывается в основном потоке, но можно добавить дополнительную логику
     void _effect; // игнорируем неиспользуемый параметр
     return target;
@@ -39,7 +40,7 @@ export const effectRegistry: EffectRegistry = {
   
   // Пример: эффект берсерка
   [EffectCallbackKey.BERSERK]: (target, _effect) => {
-    console.log(`[effectRegistry] berserk callback for ${target.name}`);
+    log(`[effectRegistry] berserk callback for ${target.name}`);
     // Логика берсерка уже реализована в applyEffect
     void _effect; // игнорируем неиспользуемый параметр
     return target;
@@ -47,7 +48,7 @@ export const effectRegistry: EffectRegistry = {
   
   // Пример: эффект очищения
   [EffectCallbackKey.CLEANSE]: (target, _effect) => {
-    console.log(`[effectRegistry] cleanse callback for ${target.name}`);
+    log(`[effectRegistry] cleanse callback for ${target.name}`);
     // Логика очищения уже реализована в applyEffect
     void _effect; // игнорируем неиспользуемый параметр
     return target;
@@ -55,14 +56,14 @@ export const effectRegistry: EffectRegistry = {
   
   // Пример: эффект отражения урона
   [EffectCallbackKey.REFLECT]: (target, effect, source, gameState) => {
-    console.log(`[effectRegistry] reflect callback for ${target.name}`);
+    log(`[effectRegistry] reflect callback for ${target.name}`);
     if (!source || !gameState) return target;
     
     // Логика отражения урона может быть реализована здесь
     // Например, если есть эффект с reflectPercent, можно применить отражение
     const reflectPercent = effect.reflectPercent ?? 0;
     if (reflectPercent > 0) {
-      console.log(`Отражение ${reflectPercent * 100}% урона обратно атакующему`);
+      log(`Отражение ${reflectPercent * 100}% урона обратно атакующему`);
       // Здесь можно добавить логику отражения урона
     }
     return target;

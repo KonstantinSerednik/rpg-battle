@@ -22,7 +22,6 @@ const WinnerScreen: React.FC = () => {
         <h2>🏆 Победа! 🏆</h2>
         <div className="winner-card">
           <h3>{winner.name}</h3>
-          <p className="winner-class">Класс: {winner.name}</p>
           <div className="winner-stats">
             <div className="stat">
               <span>Осталось HP:</span>

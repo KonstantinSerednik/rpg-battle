@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import EffectIcons from './EffectIcons';
 import { chooseAiAttack } from '../ai/aiLogic';
@@ -19,6 +19,10 @@ const BattleScene: React.FC = () => {
   const [popups, setPopups] = useState<Popup[]>([]);
   const [prevHp, setPrevHp] = useState<[number, number]>([p1?.hp ?? 0, p2?.hp ?? 0]);
   const [prevEnergy, setPrevEnergy] = useState<[number, number]>([p1?.energy ?? 0, p2?.energy ?? 0]);
+
+  const player1Ref = useRef<HTMLDivElement>(null);
+  const player2Ref = useRef<HTMLDivElement>(null);
+  const statsGridRef = useRef<HTMLDivElement>(null);
 
   // Функция выбора атаки для ИИ с учётом эффектов (использует отдельный модуль)
   const aiChooseAttack = useCallback((aiPlayer: typeof p2, humanPlayer: typeof p1): number => {
@@ -57,13 +61,28 @@ const BattleScene: React.FC = () => {
     const newHp: [number, number] = [p1.hp, p2.hp];
     const newEnergy: [number, number] = [p1.energy, p2.energy];
 
+    // Получаем bounding rect контейнера для относительного позиционирования
+    const containerRect = statsGridRef.current?.getBoundingClientRect();
+    const cardRects = [
+      player1Ref.current?.getBoundingClientRect(),
+      player2Ref.current?.getBoundingClientRect(),
+    ];
+
     for (let i = 0; i < 2; i++) {
       const diff = newHp[i] - prevHp[i];
       if (diff !== 0) {
         const type = diff < 0 ? 'damage' : 'heal';
         const text = Math.abs(diff).toString();
-        const x = i === 0 ? 100 : 400;
-        const y = 200;
+        
+        let x = i === 0 ? 100 : 400;
+        let y = 200;
+        
+        if (containerRect && cardRects[i]) {
+          const rect = cardRects[i]!;
+          x = rect.left - containerRect.left + rect.width / 2;
+          y = rect.top - containerRect.top;
+        }
+        
         // eslint-disable-next-line react-hooks/set-state-in-effect
         addPopup(text, type, x, y);
       }
@@ -73,8 +92,16 @@ const BattleScene: React.FC = () => {
       const diff = newEnergy[i] - prevEnergy[i];
       if (diff !== 0) {
         const text = diff > 0 ? `+${diff}⚡` : `${diff}⚡`;
-        const x = i === 0 ? 100 : 400;
-        const y = 250;
+        
+        let x = i === 0 ? 100 : 400;
+        let y = 250;
+        
+        if (containerRect && cardRects[i]) {
+          const rect = cardRects[i]!;
+          x = rect.left - containerRect.left + rect.width / 2;
+          y = rect.top - containerRect.top + 50; // смещение ниже для энергии
+        }
+        
         addPopup(text, 'energy', x, y);
       }
     }
@@ -97,10 +124,15 @@ const BattleScene: React.FC = () => {
   const renderPlayerCard = (player: Character, isActive: boolean, playerNumber: 1 | 2) => {
     // Проверяем, есть ли у вражеского игрока эффект 'devastation'
     const hasDevastation = player.effects.some(e => e.id === 'devastation');
-    const showHiddenHp = playerNumber === 2 && hasDevastation;
+    const showHiddenHp = hasDevastation;
     
+    const cardRef = playerNumber === 1 ? player1Ref : player2Ref;
     return (
-      <div className={`box player-card ${isActive ? 'active-turn' : ''}`} style={{ position: 'relative' }}>
+      <div
+        ref={cardRef}
+        className={`box player-card ${isActive ? 'active-turn' : ''}`}
+        style={{ position: 'relative' }}
+      >
         <h4>
           {player.name} {playerNumber === 2 && gameMode === 'PvC' && '🤖'}
         </h4>
@@ -206,7 +238,7 @@ const BattleScene: React.FC = () => {
         <p>Ход: {turn === 1 ? 'Игрок 1' : gameMode === 'PvC' ? 'ИИ' : 'Игрок 2'}</p>
       </div>
 
-      <div className="stats-grid" style={{ position: 'relative' }}>
+      <div ref={statsGridRef} className="stats-grid" style={{ position: 'relative' }}>
         {popups.map(pop => (
           <div
             key={pop.id}

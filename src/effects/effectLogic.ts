@@ -1,5 +1,6 @@
 import type { Character, Effect } from '../types/game';
 import { ALL_ATTACKS } from '../db';
+import { log } from '../utils/logger';
 
 /** Максимальное количество уникальных эффектов, которые может иметь персонаж */
 export const MAX_EFFECTS = 5;
@@ -21,7 +22,7 @@ export function applyEffect(
   target: Character,
   effect: Effect
 ): Character {
-  console.log(`[effectLogic] Applying effect ${effect.name} to ${target.name}`);
+  log(`[effectLogic] Applying effect ${effect.name} to ${target.name}`);
   
   // Создаём глубокую копию персонажа
   const newTarget: Character = {
@@ -67,7 +68,7 @@ export function applyEffect(
       });
       // Если нашли, удаляем его
       if (lowestPriorityIndex >= 0) {
-        console.log(`[effectLogic] Достигнут лимит ${MAX_EFFECTS} эффектов, удаляем эффект ${newTarget.effects[lowestPriorityIndex].name} с приоритетом ${lowestPriority}`);
+        log(`[effectLogic] Достигнут лимит ${MAX_EFFECTS} эффектов, удаляем эффект ${newTarget.effects[lowestPriorityIndex].name} с приоритетом ${lowestPriority}`);
         newTarget.effects = newTarget.effects.filter((_, idx) => idx !== lowestPriorityIndex);
       }
     }
@@ -110,7 +111,7 @@ export function applyEffect(
       const attackCopy = { ...berserkAttack };
       newTarget.attacks = [attackCopy];
     }
-    console.log(`[effectLogic] ${newTarget.name} впал в берсерк! HP установлено 100, атаки заменены.`);
+    log(`[effectLogic] ${newTarget.name} впал в берсерк! HP установлено 100, атаки заменены.`);
   }
 
   if (effect.id === 'bear_form') {
@@ -125,9 +126,9 @@ export function applyEffect(
           ...bearEffect,
           originalAttacks,
         };
-        console.log(`[effectLogic] Сохранены оригинальные атаки для ${newTarget.name}: ${originalAttacks.map(a => a.name).join(', ')}`);
+        log(`[effectLogic] Сохранены оригинальные атаки для ${newTarget.name}: ${originalAttacks.map(a => a.name).join(', ')}`);
       } else {
-        console.log(`[effectLogic] Оригинальные атаки уже сохранены для ${newTarget.name}`);
+        log(`[effectLogic] Оригинальные атаки уже сохранены для ${newTarget.name}`);
       }
     }
 
@@ -139,7 +140,7 @@ export function applyEffect(
       const attackCopy2 = { ...bearAttack2 };
       newTarget.attacks = [attackCopy1, attackCopy2];
     }
-    console.log(`[effectLogic] ${newTarget.name} превратился в медведя! Атаки заменены.`);
+    log(`[effectLogic] ${newTarget.name} превратился в медведя! Атаки заменены.`);
   }
 
   if (effect.id === 'arcane') {
@@ -147,7 +148,7 @@ export function applyEffect(
     const arcaneShot = newTarget.attacks.find(a => a.name === 'Арканный выстрел');
     if (arcaneShot && arcaneShot.uses < arcaneShot.max_uses) {
       arcaneShot.uses = arcaneShot.max_uses;
-      console.log(`[effectLogic] ${newTarget.name} восстановил использование "Арканного выстрела".`);
+      log(`[effectLogic] ${newTarget.name} восстановил использование "Арканного выстрела".`);
     }
   }
 
@@ -158,15 +159,15 @@ export function applyEffect(
       // Удалить все эффекты (кроме, возможно, баффов? но очищение снимает всё)
       newTarget.effects = [];
       newTarget.isStunned = false;
-      console.log(`[effectLogic] ${newTarget.name} очищен от всех эффектов (шанс сработал).`);
+      log(`[effectLogic] ${newTarget.name} очищен от всех эффектов (шанс сработал).`);
     } else {
-      console.log(`[effectLogic] Очищение не сработало (шанс ${chance} не прошёл).`);
+      log(`[effectLogic] Очищение не сработало (шанс ${chance} не прошёл).`);
     }
   }
 
   // Вызов колбэка onApply (если есть) - будет обработан через реестр функций
   if (effect.onApply) {
-    console.log(`Effect ${effect.name} applied to ${newTarget.name}`);
+    log(`Effect ${effect.name} applied to ${newTarget.name}`);
   }
 
   return newTarget;
@@ -191,7 +192,7 @@ export function tickEffects(target: Character): Character {
 
     // Вызвать onTurnStart (если есть) - будет обработан через реестр функций
     if (effect.onTurnStart) {
-      console.log(`Effect ${effect.name} onTurnStart for ${newTarget.name}`);
+      log(`Effect ${effect.name} onTurnStart for ${newTarget.name}`);
     }
 
     // Применить периодический урон/лечение
@@ -218,7 +219,7 @@ export function tickEffects(target: Character): Character {
       if (!attacksRestored) {
         // Восстанавливаем глубокую копию сохранённых атак
         newTarget.attacks = effect.originalAttacks.map(a => ({ ...a }));
-        console.log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
+        log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
         attacksRestored = true;
       } else {
         console.warn(`[effectLogic] Пропускаем восстановление атак для эффекта ${effect.name}, так как атаки уже восстановлены другим эффектом.`);
@@ -253,7 +254,7 @@ export function calculateModifiers(target: Character): Modifiers {
     dodgeChance: 0,
   };
 
-  console.log(`[effectLogic] calculateModifiers for ${target.name}, effects:`, target.effects.map(e => e.name));
+  log(`[effectLogic] calculateModifiers for ${target.name}, effects:`, target.effects.map(e => e.name));
 
   target.effects.forEach(effect => {
     const { modifiers, currentStacks } = effect;
@@ -261,36 +262,36 @@ export function calculateModifiers(target: Character): Modifiers {
     if (modifiers.damageMultiplier) {
       const old = base.damageMultiplier;
       base.damageMultiplier *= Math.pow(modifiers.damageMultiplier, stacks);
-      console.log(`  effect ${effect.name}: damageMultiplier ${modifiers.damageMultiplier}^${stacks} => ${base.damageMultiplier} (was ${old})`);
+      log(`  effect ${effect.name}: damageMultiplier ${modifiers.damageMultiplier}^${stacks} => ${base.damageMultiplier} (was ${old})`);
     }
     if (modifiers.damageReduction) {
       const old = base.damageReduction;
       base.damageReduction += modifiers.damageReduction * stacks;
-      console.log(`  effect ${effect.name}: damageReduction ${modifiers.damageReduction}*${stacks} => ${base.damageReduction} (was ${old})`);
+      log(`  effect ${effect.name}: damageReduction ${modifiers.damageReduction}*${stacks} => ${base.damageReduction} (was ${old})`);
     }
     if (modifiers.healingMultiplier) {
       const old = base.healingMultiplier;
       base.healingMultiplier *= Math.pow(modifiers.healingMultiplier, stacks);
-      console.log(`  effect ${effect.name}: healingMultiplier ${modifiers.healingMultiplier}^${stacks} => ${base.healingMultiplier} (was ${old})`);
+      log(`  effect ${effect.name}: healingMultiplier ${modifiers.healingMultiplier}^${stacks} => ${base.healingMultiplier} (was ${old})`);
     }
     if (modifiers.energyGainMultiplier) {
       const old = base.energyGainMultiplier;
       base.energyGainMultiplier *= Math.pow(modifiers.energyGainMultiplier, stacks);
-      console.log(`  effect ${effect.name}: energyGainMultiplier ${modifiers.energyGainMultiplier}^${stacks} => ${base.energyGainMultiplier} (was ${old})`);
+      log(`  effect ${effect.name}: energyGainMultiplier ${modifiers.energyGainMultiplier}^${stacks} => ${base.energyGainMultiplier} (was ${old})`);
     }
     if (modifiers.criticalChance) {
       const old = base.criticalChance;
       base.criticalChance += modifiers.criticalChance * stacks;
-      console.log(`  effect ${effect.name}: criticalChance ${modifiers.criticalChance}*${stacks} => ${base.criticalChance} (was ${old})`);
+      log(`  effect ${effect.name}: criticalChance ${modifiers.criticalChance}*${stacks} => ${base.criticalChance} (was ${old})`);
     }
     if (modifiers.dodgeChance) {
       const old = base.dodgeChance;
       base.dodgeChance += modifiers.dodgeChance * stacks;
-      console.log(`  effect ${effect.name}: dodgeChance ${modifiers.dodgeChance}*${stacks} => ${base.dodgeChance} (was ${old})`);
+      log(`  effect ${effect.name}: dodgeChance ${modifiers.dodgeChance}*${stacks} => ${base.dodgeChance} (was ${old})`);
     }
   });
 
-  console.log(`[effectLogic] final modifiers for ${target.name}:`, base);
+  log(`[effectLogic] final modifiers for ${target.name}:`, base);
   return base;
 }
 
@@ -313,7 +314,7 @@ export function calculateFinalDamage(
   // Учесть щиты
   finalDamage = absorbDamageWithShields(target, finalDamage);
 
-  console.log(`[effectLogic] calculateFinalDamage: base=${baseDamage}, attackerMult=${attackerMods.damageMultiplier}, targetReduction=${targetMods.damageReduction}, afterShields=${finalDamage}`);
+  log(`[effectLogic] calculateFinalDamage: base=${baseDamage}, attackerMult=${attackerMods.damageMultiplier}, targetReduction=${targetMods.damageReduction}, afterShields=${finalDamage}`);
   return finalDamage;
 }
 
@@ -333,7 +334,7 @@ export function calculateRawDamage(
   rawDamage = rawDamage * (1 - targetMods.damageReduction);
   rawDamage = Math.round(rawDamage);
 
-  console.log(`[effectLogic] calculateRawDamage: base=${baseDamage}, attackerMult=${attackerMods.damageMultiplier}, targetReduction=${targetMods.damageReduction}, raw=${rawDamage}`);
+  log(`[effectLogic] calculateRawDamage: base=${baseDamage}, attackerMult=${attackerMods.damageMultiplier}, targetReduction=${targetMods.damageReduction}, raw=${rawDamage}`);
   return rawDamage;
 }
 
@@ -360,12 +361,12 @@ export function removeEffect(target: Character, effectId: string): Character {
     const effect = newTarget.effects[index];
     // Вызов колбэка onRemove
     if (effect.onRemove) {
-      console.log(`Effect ${effect.name} removed from ${newTarget.name}`);
+      log(`Effect ${effect.name} removed from ${newTarget.name}`);
     }
     // Восстановить оригинальные атаки, если эффект их заменял
     if (effect.originalAttacks) {
       newTarget.attacks = effect.originalAttacks.map(a => ({ ...a }));
-      console.log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
+      log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
     } else if (effect.id === 'bear_form' || effect.id === 'berserk') {
       console.warn(`[effectLogic] Эффект ${effect.name} удаляется, но originalAttacks отсутствуют! Атаки могут остаться изменёнными.`);
     }
@@ -398,7 +399,7 @@ export function cleanse(target: Character, effectType?: string): Character {
   const effectWithOriginalAttacks = effectsToRemove.find(e => e.originalAttacks);
   if (effectWithOriginalAttacks) {
     newTarget.attacks = effectWithOriginalAttacks.originalAttacks!.map(a => ({ ...a }));
-    console.log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effectWithOriginalAttacks.name} у ${newTarget.name} (очищение)`);
+    log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effectWithOriginalAttacks.name} у ${newTarget.name} (очищение)`);
   }
 
   if (effectType) {

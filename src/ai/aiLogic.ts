@@ -1,6 +1,6 @@
 import type { Character } from '../types/game';
 import type { Attack } from '../db';
-import { calculateFinalDamage } from '../effects/effectLogic';
+import { calculateFinalDamageWithPipeline } from '../effects/statPipeline';
 import { canUseSecretAttack } from '../utilities/secretAttack';
 
 export interface ScoredAttack {
@@ -34,7 +34,7 @@ export function chooseAiAttack(
     // 1. Урон (чем больше, тем лучше)
     if (attack.damage > 0) {
       // Учёт модификаторов урона атакующего и защиты цели, включая щиты
-      const damage = calculateFinalDamage(aiPlayer, humanPlayer, attack.damage);
+      const damage = calculateFinalDamageWithPipeline(aiPlayer, humanPlayer, attack.damage);
       // Используем финальный урон и добавляем базовый урон как бонус 1 к 1
       score += damage + attack.damage;
     }
@@ -151,7 +151,7 @@ export function getAiDebugInfo(
   const scores: ScoredAttack[] = availableAttacks.map(attack => {
     let score = 0;
     if (attack.damage > 0) {
-      const damage = calculateFinalDamage(aiPlayer, humanPlayer, attack.damage);
+      const damage = calculateFinalDamageWithPipeline(aiPlayer, humanPlayer, attack.damage);
       // Используем финальный урон и добавляем базовый урон как бонус 1 к 1
       score += damage + attack.damage;
     }
