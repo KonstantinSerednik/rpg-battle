@@ -87,6 +87,7 @@ export interface GameState {
   // История боя для статистики
   turnHistory: TurnRecord[];
   attackSummary: AttackSummary[];
+  isDraw: boolean;
 }
 
 // Типы действий для редуктора (добавлены для системы эффектов)

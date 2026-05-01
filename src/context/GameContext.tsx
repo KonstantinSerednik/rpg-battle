@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer } from 'react';
 import type { ReactNode } from 'react';
-import type { Character, GameMode, Stage, GameState, Effect } from '../types/game';
+import type { Character, GameMode, Stage, GameState, Effect, TurnRecord } from '../types/game';
 import { executeTurnPipeline, processTurnStartEffects } from '../effects/turnPipeline';
 import { applyEffect, removeEffect, cleanse } from '../effects/effectLogic';
 import { processEffectOnApply, processEffectOnRemove } from '../effects/effectRegistry';
@@ -18,7 +18,8 @@ type GameAction =
   | { type: 'EFFECT_TICK'; payload: { target: 1 | 2 } }
   | { type: 'EFFECT_REMOVE'; payload: { target: 1 | 2; effectId: string } }
   | { type: 'CLEANSE'; payload: { target: 1 | 2; effectType?: string } }
-  | { type: 'RESET' };
+  | { type: 'RESET' }
+  | { type: 'DRAW' };
 
 const initialState: GameState = {
   stage: 'mode_select',
@@ -29,6 +30,7 @@ const initialState: GameState = {
   log: 'Выберите режим игры',
   turnHistory: [],
   attackSummary: [],
+  isDraw: false,
 };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -85,6 +87,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const newP1 = attacker === 1 ? updatedAttacker : updatedTarget;
       const newP2 = attacker === 2 ? updatedAttacker : updatedTarget;
 
+      // Запись хода в историю для статистики
+      const attack = attackerChar.attacks[attackIndex];
+      const attackDamage = targetChar.hp - updatedTarget.hp; // урон (может быть отрицательным для лечения)
+      const turnRecord: TurnRecord = {
+        turnNumber: state.turnHistory.length + 1,
+        attacker,
+        attackName: attack?.name || 'Неизвестно',
+        attackDamage,
+        p1Hp: newP1.hp,
+        p2Hp: newP2.hp,
+        p1Energy: newP1.energy,
+        p2Energy: newP2.energy,
+        timestamp: Date.now(),
+      };
+
       const newState = {
         ...state,
         p1: newP1,
@@ -92,6 +109,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         turn: nextTurn,
         stage: nextStage,
         log: logMessage,
+        turnHistory: [...state.turnHistory, turnRecord],
       };
 
       // Нормализуем числовые данные
@@ -131,6 +149,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const newChar = cleanse(char, effectType);
       return normalizeGameState(updateCharacter(target, newChar));
     }
+    case 'DRAW':
+      return normalizeGameState({
+        ...state,
+        stage: 'winner',
+        isDraw: true,
+        log: 'Ничья! Оба игрока не могут атаковать.',
+      });
     case 'RESET':
       return initialState;
     default:

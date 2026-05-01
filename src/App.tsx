@@ -6,13 +6,15 @@ import CharacterSelection from './components/CharacterSelection';
 import AttackSelection from './components/AttackSelection';
 import BattleScene from './components/BattleScene';
 import WinnerScreen from './components/WinnerScreen';
+import ThemeToggle from './components/ThemeToggle';
 
 const GameContent: React.FC = () => {
   const { state } = useGame();
   const { stage, log } = state;
 
   return (
-    <div className="arena-container">
+    <div className={`arena-container stage-${stage}`}>
+      <ThemeToggle />
       <div className="box">
         <h1>RPG ARENA</h1>
         <p className="log-text">{log}</p>

@@ -11,6 +11,7 @@ interface Popup {
   type: 'damage' | 'heal' | 'energy';
   x: number;
   y: number;
+  isCritical?: boolean;
 }
 
 const BattleScene: React.FC = () => {
@@ -23,6 +24,19 @@ const BattleScene: React.FC = () => {
   const player1Ref = useRef<HTMLDivElement>(null);
   const player2Ref = useRef<HTMLDivElement>(null);
   const statsGridRef = useRef<HTMLDivElement>(null);
+
+  // Проверка, есть ли у игрока доступные атаки
+  const hasAvailableAttacks = useCallback((player: Character | null): boolean => {
+    if (!player) return false;
+    const hasAny = player.attacks.some(a => {
+      if (a.uses <= 0) return false;
+      if (a.isUltimate && player.energy < (a.energyCost || 0)) return false;
+      if (!canUseSecretAttack(player, a) && a.isSecret) return false;
+      return true;
+    });
+    console.log(`[BattleScene] hasAvailableAttacks for ${player.name}:`, hasAny);
+    return hasAny;
+  }, []);
 
   // Функция выбора атаки для ИИ с учётом эффектов (использует отдельный модуль)
   const aiChooseAttack = useCallback((aiPlayer: typeof p2, humanPlayer: typeof p1): number => {
@@ -47,9 +61,36 @@ const BattleScene: React.FC = () => {
     }
   }, [turn, gameMode, p2, dispatch, aiChooseAttack, p1]);
 
-  const addPopup = (text: string, type: 'damage' | 'heal' | 'energy', x: number, y: number) => {
+  // Автоматический пропуск хода, если у текущего игрока нет доступных атак
+  useEffect(() => {
+    if (state.stage === 'winner') return; // не пропускаем, если уже есть победитель
+    
+    const currentPlayer = turn === 1 ? p1 : p2;
+    if (!currentPlayer) return;
+    
+    const hasAttacks = hasAvailableAttacks(currentPlayer);
+    console.log(`[BattleScene] turn=${turn}, hasAttacks=${hasAttacks}`);
+    
+    if (!hasAttacks) {
+      console.log(`[BattleScene] Игрок ${currentPlayer.name} не имеет доступных атак, пропускаем ход`);
+      const nextTurn = turn === 1 ? 2 : 1;
+      const nextPlayer = nextTurn === 1 ? p1 : p2;
+      const nextPlayerHasAttacks = nextPlayer ? hasAvailableAttacks(nextPlayer) : false;
+      
+      // Если у следующего игрока тоже нет атак - это ничья
+      if (!nextPlayerHasAttacks) {
+        console.log(`[BattleScene] Оба игрока не имеют атак - ничья`);
+        dispatch({ type: 'DRAW' });
+      } else {
+        dispatch({ type: 'SET_TURN', payload: nextTurn });
+        dispatch({ type: 'SET_LOG', payload: `${currentPlayer.name} пропускает ход` });
+      }
+    }
+  }, [turn, p1, p2, state.stage, hasAvailableAttacks, dispatch]);
+
+  const addPopup = (text: string, type: 'damage' | 'heal' | 'energy', x: number, y: number, isCritical = false) => {
     const id = Date.now() + Math.random();
-    setPopups(prev => [...prev, { id, text, type, x, y }]);
+    setPopups(prev => [...prev, { id, text, type, x, y, isCritical }]);
     setTimeout(() => {
       setPopups(prev => prev.filter(p => p.id !== id));
     }, 1000);
@@ -72,7 +113,11 @@ const BattleScene: React.FC = () => {
       const diff = newHp[i] - prevHp[i];
       if (diff !== 0) {
         const type = diff < 0 ? 'damage' : 'heal';
-        const text = Math.abs(diff).toString();
+        const isCritical = type === 'damage' && Math.random() < 0.1; // 10% шанс крита
+        let text = Math.abs(diff).toString();
+        if (isCritical) {
+          text = 'КРИТ! ' + text;
+        }
         
         let x = i === 0 ? 100 : 400;
         let y = 200;
@@ -84,7 +129,7 @@ const BattleScene: React.FC = () => {
         }
         
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        addPopup(text, type, x, y);
+        addPopup(text, type, x, y, isCritical);
       }
     }
 
@@ -242,7 +287,7 @@ const BattleScene: React.FC = () => {
         {popups.map(pop => (
           <div
             key={pop.id}
-            className={pop.type === 'damage' ? 'damage-popup' : pop.type === 'heal' ? 'heal-popup' : 'damage-popup'}
+            className={pop.isCritical ? 'critical-popup' : (pop.type === 'damage' ? 'damage-popup' : pop.type === 'heal' ? 'heal-popup' : 'damage-popup')}
             style={{
               left: `${pop.x}px`,
               top: `${pop.y}px`,
