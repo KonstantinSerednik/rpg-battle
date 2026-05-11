@@ -57,7 +57,7 @@ const AttackSelection: React.FC<AttackSelectionProps> = ({ forPlayer }) => {
 
     if (forPlayer === 1) {
       if (gameMode === 'PvC') {
-        // выбор для ИИ
+        
         const availablePresets = PRESETS.filter(p => p.name !== player?.name);
         const randomPreset = availablePresets.length > 0
           ? availablePresets[Math.floor(Math.random() * availablePresets.length)]
@@ -70,7 +70,7 @@ const AttackSelection: React.FC<AttackSelectionProps> = ({ forPlayer }) => {
         dispatch({ type: 'SET_STAGE', payload: 'battle' });
         dispatch({ type: 'SET_LOG', payload: `ИИ выбрал ${randomPreset.name} и ${aiAttacks.length} атак` });
       } else {
-        // Добавляем секретные атаки к персонажу игрока 1
+        
         if (player) {
           const secretAttacks = getSecretAttacks(player.name);
           const allAttacks = [...selectedAttacks, ...secretAttacks];
@@ -81,7 +81,7 @@ const AttackSelection: React.FC<AttackSelectionProps> = ({ forPlayer }) => {
         dispatch({ type: 'SET_LOG', payload: 'Игрок 1 выбрал атаки' });
       }
     } else {
-      // Добавляем секретные атаки к персонажу игрока 2
+      
       if (player) {
         const secretAttacks = getSecretAttacks(player.name);
         const allAttacks = [...selectedAttacks, ...secretAttacks];
@@ -130,4 +130,4 @@ const AttackSelection: React.FC<AttackSelectionProps> = ({ forPlayer }) => {
   );
 };
 
-export default AttackSelection;
+export default AttackSelection;

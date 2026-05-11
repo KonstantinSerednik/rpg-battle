@@ -63,7 +63,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       
       if (!attackerChar || !targetChar) return state;
 
-      // Используем линеаризованный конвейер хода
       const turnResult = executeTurnPipeline({
         attacker: attackerChar,
         target: targetChar,
@@ -73,23 +72,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
       const { updatedAttacker, updatedTarget, logMessages, targetDead } = turnResult;
 
-      // Определяем следующий ход и стадию
       const nextTurn = targetDead ? state.turn : (attacker === 1 ? 2 : 1);
       const nextStage = targetDead ? 'winner' : state.stage;
 
-      // Формируем итоговое сообщение лога
       let logMessage = logMessages.join(' ');
       if (logMessages.length === 0) {
         logMessage = `${attackerChar.name} применил атаку!`;
       }
 
-      // Создаём новое состояние
       const newP1 = attacker === 1 ? updatedAttacker : updatedTarget;
       const newP2 = attacker === 2 ? updatedAttacker : updatedTarget;
 
-      // Запись хода в историю для статистики
       const attack = attackerChar.attacks[attackIndex];
-      const attackDamage = targetChar.hp - updatedTarget.hp; // урон (может быть отрицательным для лечения)
+      const attackDamage = targetChar.hp - updatedTarget.hp; 
       const turnRecord: TurnRecord = {
         turnNumber: state.turnHistory.length + 1,
         attacker,
@@ -112,7 +107,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         turnHistory: [...state.turnHistory, turnRecord],
       };
 
-      // Нормализуем числовые данные
       return normalizeGameState(newState);
     }
     case 'EFFECT_APPLY': {
@@ -127,7 +121,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const { target } = action.payload;
       const char = getCharacter(target);
       if (!char) return state;
-      // Используем processTurnStartEffects из turnPipeline
+      
       const newChar = processTurnStartEffects(char);
       return normalizeGameState(updateCharacter(target, newChar));
     }
@@ -180,7 +174,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useGame() {
   const context = useContext(GameContext);
   if (context === undefined) {

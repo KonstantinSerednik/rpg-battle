@@ -25,7 +25,6 @@ const BattleScene: React.FC = () => {
   const player2Ref = useRef<HTMLDivElement>(null);
   const statsGridRef = useRef<HTMLDivElement>(null);
 
-  // Проверка, есть ли у игрока доступные атаки
   const hasAvailableAttacks = useCallback((player: Character | null): boolean => {
     if (!player) return false;
     const hasAny = player.attacks.some(a => {
@@ -38,13 +37,11 @@ const BattleScene: React.FC = () => {
     return hasAny;
   }, []);
 
-  // Функция выбора атаки для ИИ с учётом эффектов (использует отдельный модуль)
   const aiChooseAttack = useCallback((aiPlayer: typeof p2, humanPlayer: typeof p1): number => {
     if (!aiPlayer || !humanPlayer) return 0;
     return chooseAiAttack(aiPlayer, humanPlayer);
   }, []);
 
-  // логика хода бота
   useEffect(() => {
     if (turn === 2 && gameMode === 'PvC' && p2) {
       const timer = setTimeout(() => {
@@ -61,9 +58,8 @@ const BattleScene: React.FC = () => {
     }
   }, [turn, gameMode, p2, dispatch, aiChooseAttack, p1]);
 
-  // Автоматический пропуск хода, если у текущего игрока нет доступных атак
   useEffect(() => {
-    if (state.stage === 'winner') return; // не пропускаем, если уже есть победитель
+    if (state.stage === 'winner') return; 
     
     const currentPlayer = turn === 1 ? p1 : p2;
     if (!currentPlayer) return;
@@ -77,7 +73,6 @@ const BattleScene: React.FC = () => {
       const nextPlayer = nextTurn === 1 ? p1 : p2;
       const nextPlayerHasAttacks = nextPlayer ? hasAvailableAttacks(nextPlayer) : false;
       
-      // Если у следующего игрока тоже нет атак - это ничья
       if (!nextPlayerHasAttacks) {
         console.log(`[BattleScene] Оба игрока не имеют атак - ничья`);
         dispatch({ type: 'DRAW' });
@@ -96,13 +91,11 @@ const BattleScene: React.FC = () => {
     }, 1000);
   };
 
-  // Всплывающие числа
   useEffect(() => {
     if (!p1 || !p2) return;
     const newHp: [number, number] = [p1.hp, p2.hp];
     const newEnergy: [number, number] = [p1.energy, p2.energy];
 
-    // Получаем bounding rect контейнера для относительного позиционирования
     const containerRect = statsGridRef.current?.getBoundingClientRect();
     const cardRects = [
       player1Ref.current?.getBoundingClientRect(),
@@ -113,7 +106,7 @@ const BattleScene: React.FC = () => {
       const diff = newHp[i] - prevHp[i];
       if (diff !== 0) {
         const type = diff < 0 ? 'damage' : 'heal';
-        const isCritical = type === 'damage' && Math.random() < 0.1; // 10% шанс крита
+        const isCritical = type === 'damage' && Math.random() < 0.1; 
         let text = Math.abs(diff).toString();
         if (isCritical) {
           text = 'КРИТ! ' + text;
@@ -128,7 +121,6 @@ const BattleScene: React.FC = () => {
           y = rect.top - containerRect.top;
         }
         
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         addPopup(text, type, x, y, isCritical);
       }
     }
@@ -144,7 +136,7 @@ const BattleScene: React.FC = () => {
         if (containerRect && cardRects[i]) {
           const rect = cardRects[i]!;
           x = rect.left - containerRect.left + rect.width / 2;
-          y = rect.top - containerRect.top + 50; // смещение ниже для энергии
+          y = rect.top - containerRect.top + 50; 
         }
         
         addPopup(text, 'energy', x, y);
@@ -161,13 +153,12 @@ const BattleScene: React.FC = () => {
 
   const handleAttack = (index: number) => {
     console.log(`[BattleScene] handleAttack index=${index}, turn=${turn}`);
-    if (turn === 2 && gameMode === 'PvC') return; // робот ходит автоматически
+    if (turn === 2 && gameMode === 'PvC') return; 
     dispatch({ type: 'ATTACK', payload: { attacker: turn, attackIndex: index } });
   };
 
-
   const renderPlayerCard = (player: Character, isActive: boolean, playerNumber: 1 | 2) => {
-    // Проверяем, есть ли у вражеского игрока эффект 'devastation'
+    
     const hasDevastation = player.effects.some(e => e.id === 'devastation');
     const showHiddenHp = hasDevastation;
     
@@ -182,7 +173,7 @@ const BattleScene: React.FC = () => {
           {player.name} {playerNumber === 2 && gameMode === 'PvC' && '🤖'}
         </h4>
 
-        {/* Полоска HP */}
+        {}
         <div className="bar-bg">
           <div
             className="hp-bar"
@@ -193,7 +184,7 @@ const BattleScene: React.FC = () => {
           HP: {showHiddenHp ? '???/???' : `${player.hp}/${player.max_hp}`}
         </p>
 
-        {/* Полоска ресурса */}
+        {}
         <div className="bar-bg">
           <div
             className="energy-bar"
@@ -204,7 +195,7 @@ const BattleScene: React.FC = () => {
           {player.resourceName}: {player.energy}/100
         </p>
 
-      {/* Щиты и оглушение */}
+      {}
       {(player.shields > 0 || player.isStunned) && (
         <div style={{ display: 'flex', gap: '10px', marginTop: '5px', fontSize: '0.8rem' }}>
           {player.shields > 0 && (
@@ -220,10 +211,10 @@ const BattleScene: React.FC = () => {
         </div>
       )}
 
-      {/* Эффекты */}
+      {}
       <EffectIcons effects={player.effects} />
 
-      {/* Атаки */}
+      {}
       {isActive && (
         <div style={{ marginTop: '15px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>

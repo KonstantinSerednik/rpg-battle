@@ -12,18 +12,17 @@ const EffectIcons: React.FC<EffectIconsProps> = ({ effects }) => {
 
   const getColor = (type: Effect['type']) => {
     switch (type) {
-      case 'buff': return '#4ade80'; // зеленый
-      case 'debuff': return '#f87171'; // красный
-      case 'shield': return '#60a5fa'; // синий
-      case 'control': return '#a78bfa'; // фиолетовый
-      case 'special': return '#fbbf24'; // желтый
+      case 'buff': return '#4ade80'; 
+      case 'debuff': return '#f87171'; 
+      case 'shield': return '#60a5fa'; 
+      case 'control': return '#a78bfa'; 
+      case 'special': return '#fbbf24'; 
       default: return '#94a3b8';
     }
   };
 
   const getIcon = (icon: string) => {
-    // В будущем можно использовать реальные иконки из lucide-react
-    // Пока используем эмодзи или буквы
+    
     const iconMap: Record<string, string> = {
       bleed: '🩸',
       burn: '🔥',

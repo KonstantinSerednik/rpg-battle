@@ -10,7 +10,6 @@ const StatsChart: React.FC = () => {
     return <div className="box">Нет данных для отображения статистики.</div>;
   }
 
-  // Подготовка данных для графика
   const data = turnHistory.map(record => ({
     turn: record.turnNumber,
     hp1: record.p1Hp,

@@ -1,12 +1,6 @@
 import type { Character } from '../types/game';
 import type { Attack } from '../db';
 
-/**
- * Проверяет, можно ли использовать секретную атаку.
- * Секретная атака доступна, если:
- * - HP ниже 30% ИЛИ
- * - есть соответствующий эффект (BERSERK для воина, BEAR_FORM для друида)
- */
 export function canUseSecretAttack(player: Character, attack: Attack): boolean {
   if (!attack.isSecret) return true;
   const hpRatio = player.hp / player.max_hp;

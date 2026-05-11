@@ -20,7 +20,7 @@ const CharacterSelection: React.FC<CharacterSelectionProps> = ({ forPlayer }) =>
       dispatch({ type: 'SET_LOG', payload: `Игрок 1 выбрал ${preset.name}` });
     } else {
       if (gameMode === 'PvC') {
-        // Автоматический выбор атак для робота
+        
         const attacks = selectRandomAttacks(preset.name, ALL_ATTACKS);
         const secretAttacks = getSecretAttacks(preset.name);
         const allAttacks = [...attacks, ...secretAttacks];
@@ -41,11 +41,11 @@ const CharacterSelection: React.FC<CharacterSelectionProps> = ({ forPlayer }) =>
 
   const handleBack = () => {
     if (forPlayer === 1) {
-      // Возврат к выбору режима
+      
       dispatch({ type: 'SET_STAGE', payload: 'mode_select' });
       dispatch({ type: 'SET_LOG', payload: 'Выберите режим игры' });
     } else {
-      // Возврат к выбору персонажа игрока 1
+      
       dispatch({ type: 'SET_STAGE', payload: 'p1_char' });
       dispatch({ type: 'SET_LOG', payload: 'Игрок 1, выберите героя' });
     }

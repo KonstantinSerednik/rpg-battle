@@ -1,4 +1,3 @@
-/* App.css */
 .arena-container {
   background-color: var(--bg);
   color: var(--text);
@@ -78,7 +77,6 @@
   height: 2.5rem;
 }
 
-/* Анимации для полосок */
 .hp-bar.damage {
   animation: hp-damage-flash 0.5s ease-out;
 }
@@ -109,7 +107,6 @@
   100% { background-color: #3b82f6; }
 }
 
-/* Всплывающие числа */
 .damage-popup {
   position: absolute;
   color: #ef4444;
@@ -160,7 +157,6 @@
   }
 }
 
-/* Стили для WinnerScreen */
 .winner-screen .winner-card {
   margin: 20px 0;
   padding: 15px;
@@ -209,9 +205,6 @@
   margin-top: 10px;
 }
 
-/* ========== Визуальные улучшения ========== */
-
-/* ModeSelection */
 .mode-selection {
   text-align: center;
 }
@@ -253,7 +246,6 @@
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* CharacterSelection */
 .character-selection .selection-subtitle {
   color: #aaa;
   margin-bottom: 1.5rem;
@@ -319,7 +311,6 @@
   color: #ccc;
 }
 
-/* AttackSelection */
 .attack-selection .selection-subtitle {
   color: #aaa;
   margin-bottom: 1.5rem;
@@ -472,7 +463,6 @@
   color: #aaa;
 }
 
-/* Анимации */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -488,7 +478,6 @@
   animation: fadeInUp 0.5s ease-out;
 }
 
-/* Адаптивность */
 @media (max-width: 768px) {
   .mode-buttons {
     flex-direction: column;
@@ -513,9 +502,6 @@
   }
 }
 
-/* ========== Дополнительные CSS-анимации ========== */
-
-/* Пульсация для ультимейт-атак */
 @keyframes pulse-ultimate {
   0% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.7); }
   70% { box-shadow: 0 0 0 10px rgba(124, 58, 237, 0); }
@@ -526,7 +512,6 @@
   animation: pulse-ultimate 2s infinite;
 }
 
-/* Анимация встряски при получении урона */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
@@ -537,7 +522,6 @@
   animation: shake 0.5s ease-in-out;
 }
 
-/* Свечение для активного хода */
 @keyframes glow-turn {
   0% { box-shadow: 0 0 5px #fbbf24; }
   50% { box-shadow: 0 0 20px #fbbf24; }
@@ -548,12 +532,10 @@
   animation: glow-turn 1.5s infinite;
 }
 
-/* Плавное появление элементов */
 .fade-in {
   animation: fadeInUp 0.6s ease-out;
 }
 
-/* Анимация выбора атаки */
 @keyframes select-pop {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
@@ -564,12 +546,10 @@
   animation: select-pop 0.3s ease-out;
 }
 
-/* Анимация перехода между этапами игры */
 .stage-transition {
   animation: fadeInUp 0.8s ease-out;
 }
 
-/* Анимация наведения на карточку персонажа с подскоком */
 @keyframes bounce {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
@@ -579,7 +559,6 @@
   animation: bounce 0.5s ease;
 }
 
-/* Анимация заполнения полосы здоровья */
 @keyframes fill-bar {
   from { width: 0%; }
   to { width: var(--target-width); }
@@ -589,7 +568,6 @@
   transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Стилизованные плашки эффектов */
 .effect-badge {
   display: inline-flex;
   align-items: center;
@@ -670,7 +648,6 @@
   font-size: 0.7rem;
 }
 
-/* Контейнер для группы эффектов */
 .effects-container {
   display: flex;
   flex-wrap: wrap;
@@ -680,7 +657,6 @@
   border-top: 1px dashed #444;
 }
 
-/* Тематические фоны для этапов игры */
 .stage-mode_select {
   background: linear-gradient(135deg, #1e3c72, #2a5298);
 }
@@ -701,4 +677,4 @@
 
 .stage-winner {
   background: linear-gradient(135deg, #00b09b, #96c93d);
-}
+}

@@ -2,7 +2,6 @@ import type { Character, Effect } from '../types/game';
 import { ALL_ATTACKS } from '../db';
 import { log } from '../utils/logger';
 
-/** Максимальное количество уникальных эффектов, которые может иметь персонаж */
 export const MAX_EFFECTS = 5;
 
 export interface Modifiers {
@@ -14,30 +13,24 @@ export interface Modifiers {
   dodgeChance: number;
 }
 
-/**
- * Применить эффект к персонажу с учётом приоритетов и стаков.
- * Возвращает нового персонажа с обновлёнными эффектами и характеристиками.
- */
 export function applyEffect(
   target: Character,
   effect: Effect
 ): Character {
   log(`[effectLogic] Applying effect ${effect.name} to ${target.name}`);
   
-  // Создаём глубокую копию персонажа
   const newTarget: Character = {
     ...target,
     effects: target.effects.map(e => ({ ...e })),
     attacks: target.attacks.map(a => ({ ...a })),
   };
 
-  // Если эффект с таким id уже есть
   const existingIndex = newTarget.effects.findIndex(e => e.id === effect.id);
   if (existingIndex >= 0) {
     const existing = newTarget.effects[existingIndex];
-    // Если есть стаки и не достигнут максимум
+    
     if (existing.maxStacks && existing.currentStacks < existing.maxStacks) {
-      // Для эффектов ассасина сбрасываем длительность до базовой, для остальных - максимум
+      
       const newDuration = (effect.id === 'assassin_bleed' || effect.id === 'assassin_poison')
         ? effect.duration
         : Math.max(existing.duration, effect.duration);
@@ -47,17 +40,17 @@ export function applyEffect(
         duration: newDuration,
       };
     } else {
-      // Заменить эффект, если новый имеет более высокий приоритет
+      
       if (effect.priority > existing.priority) {
         newTarget.effects[existingIndex] = { ...effect, currentStacks: 1 };
       }
-      // Иначе оставить старый (ничего не меняем)
+      
     }
   } else {
-    // Проверить ограничение на количество эффектов (максимум MAX_EFFECTS разных эффектов)
+    
     const uniqueEffectIds = new Set(newTarget.effects.map(e => e.id));
     if (uniqueEffectIds.size >= MAX_EFFECTS) {
-      // Найти эффект с наименьшим приоритетом для удаления
+      
       let lowestPriority = Infinity;
       let lowestPriorityIndex = -1;
       newTarget.effects.forEach((e, idx) => {
@@ -66,32 +59,29 @@ export function applyEffect(
           lowestPriorityIndex = idx;
         }
       });
-      // Если нашли, удаляем его
+      
       if (lowestPriorityIndex >= 0) {
         log(`[effectLogic] Достигнут лимит ${MAX_EFFECTS} эффектов, удаляем эффект ${newTarget.effects[lowestPriorityIndex].name} с приоритетом ${lowestPriority}`);
         newTarget.effects = newTarget.effects.filter((_, idx) => idx !== lowestPriorityIndex);
       }
     }
-    // Добавить новый эффект
+    
     newTarget.effects.push({ ...effect, currentStacks: 1 });
   }
 
-  // Обработка щитов
   if (effect.shieldAmount) {
     newTarget.shields += effect.shieldAmount;
   }
 
-  // Обработка оглушения
   if (effect.isStun) {
     newTarget.isStunned = true;
   }
 
-  // Обработка специальных эффектов
   if (effect.id === 'berserk') {
-    // Сохранить оригинальные атаки в объекте эффекта перед заменой
+    
     const berserkEffectIndex = newTarget.effects.findIndex(e => e.id === 'berserk');
     if (berserkEffectIndex >= 0 && !newTarget.effects[berserkEffectIndex].originalAttacks) {
-      // Сохраняем глубокую копию текущих атак
+      
       const originalAttacks = newTarget.attacks.map(a => ({ ...a }));
       newTarget.effects[berserkEffectIndex] = {
         ...newTarget.effects[berserkEffectIndex],
@@ -99,15 +89,14 @@ export function applyEffect(
       };
     }
 
-    // Установить максимальное HP = 100 и восстановить HP
     newTarget.max_hp = 100;
     if (newTarget.hp > newTarget.max_hp) {
       newTarget.hp = newTarget.max_hp;
     }
-    // Заменить все атаки на "Удар топором Берсерка"
+    
     const berserkAttack = ALL_ATTACKS.find(a => a.name === 'Удар топором Берсерка');
     if (berserkAttack) {
-      // Создаём копию атаки с обновлёнными uses (чтобы не мутировать оригинал)
+      
       const attackCopy = { ...berserkAttack };
       newTarget.attacks = [attackCopy];
     }
@@ -115,12 +104,12 @@ export function applyEffect(
   }
 
   if (effect.id === 'bear_form') {
-    // Сохранить оригинальные атаки в объекте эффекта перед заменой
+    
     const bearEffectIndex = newTarget.effects.findIndex(e => e.id === 'bear_form');
     if (bearEffectIndex >= 0) {
       const bearEffect = newTarget.effects[bearEffectIndex];
       if (!bearEffect.originalAttacks) {
-        // Сохраняем глубокую копию текущих атак
+        
         const originalAttacks = newTarget.attacks.map(a => ({ ...a }));
         newTarget.effects[bearEffectIndex] = {
           ...bearEffect,
@@ -132,7 +121,6 @@ export function applyEffect(
       }
     }
 
-    // Заменить атаки на медвежьи атаки
     const bearAttack1 = ALL_ATTACKS.find(a => a.name === 'Удар медвежьей лапы');
     const bearAttack2 = ALL_ATTACKS.find(a => a.name === 'Укуси меня пчела');
     if (bearAttack1 && bearAttack2) {
@@ -144,7 +132,7 @@ export function applyEffect(
   }
 
   if (effect.id === 'arcane') {
-    // Восстановить использование атаки "Арканный выстрел"
+    
     const arcaneShot = newTarget.attacks.find(a => a.name === 'Арканный выстрел');
     if (arcaneShot && arcaneShot.uses < arcaneShot.max_uses) {
       arcaneShot.uses = arcaneShot.max_uses;
@@ -153,10 +141,10 @@ export function applyEffect(
   }
 
   if (effect.id === 'cleanse') {
-    // Очистка всех эффектов с шансом 65%
+    
     const chance = 0.65;
     if (Math.random() < chance) {
-      // Удалить все эффекты (кроме, возможно, баффов? но очищение снимает всё)
+      
       newTarget.effects = [];
       newTarget.isStunned = false;
       log(`[effectLogic] ${newTarget.name} очищен от всех эффектов (шанс сработал).`);
@@ -165,7 +153,6 @@ export function applyEffect(
     }
   }
 
-  // Вызов колбэка onApply (если есть) - будет обработан через реестр функций
   if (effect.onApply) {
     log(`Effect ${effect.name} applied to ${newTarget.name}`);
   }
@@ -173,10 +160,6 @@ export function applyEffect(
   return newTarget;
 }
 
-/**
- * Обновить длительность эффектов и вызвать колбэки.
- * Возвращает нового персонажа с обновлёнными эффектами и HP.
- */
 export function tickEffects(target: Character): Character {
   const newTarget: Character = {
     ...target,
@@ -187,15 +170,13 @@ export function tickEffects(target: Character): Character {
   const effectsToRemove: string[] = [];
 
   newTarget.effects.forEach(effect => {
-    // Уменьшить длительность
+    
     effect.duration -= 1;
 
-    // Вызвать onTurnStart (если есть) - будет обработан через реестр функций
     if (effect.onTurnStart) {
       log(`Effect ${effect.name} onTurnStart for ${newTarget.name}`);
     }
 
-    // Применить периодический урон/лечение
     if (effect.dotDamage) {
       newTarget.hp -= effect.dotDamage * effect.currentStacks;
       if (newTarget.hp < 0) newTarget.hp = 0;
@@ -205,19 +186,17 @@ export function tickEffects(target: Character): Character {
       if (newTarget.hp > newTarget.max_hp) newTarget.hp = newTarget.max_hp;
     }
 
-    // Если длительность истекла, пометить на удаление
     if (effect.duration <= 0) {
       effectsToRemove.push(effect.id);
     }
   });
 
-  // Восстановить оригинальные атаки для удаляемых эффектов, которые их заменяли
   let attacksRestored = false;
   effectsToRemove.forEach(effectId => {
     const effect = newTarget.effects.find(e => e.id === effectId);
     if (effect?.originalAttacks) {
       if (!attacksRestored) {
-        // Восстанавливаем глубокую копию сохранённых атак
+        
         newTarget.attacks = effect.originalAttacks.map(a => ({ ...a }));
         log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
         attacksRestored = true;
@@ -229,10 +208,8 @@ export function tickEffects(target: Character): Character {
     }
   });
 
-  // Удалить истёкшие эффекты
   newTarget.effects = newTarget.effects.filter(e => !effectsToRemove.includes(e.id));
 
-  // Сбросить оглушение, если нет эффектов с isStun
   const hasStun = newTarget.effects.some(e => e.isStun);
   if (!hasStun) {
     newTarget.isStunned = false;
@@ -241,9 +218,6 @@ export function tickEffects(target: Character): Character {
   return newTarget;
 }
 
-/**
- * Рассчитать суммарные модификаторы от всех активных эффектов.
- */
 export function calculateModifiers(target: Character): Modifiers {
   const base: Modifiers = {
     damageMultiplier: 1,
@@ -295,10 +269,6 @@ export function calculateModifiers(target: Character): Modifiers {
   return base;
 }
 
-/**
- * Рассчитать финальный урон с учётом модификаторов атакующего и защиты цели,
- * а также щитов.
- */
 export function calculateFinalDamage(
   attacker: Character,
   target: Character,
@@ -311,17 +281,12 @@ export function calculateFinalDamage(
   finalDamage = finalDamage * (1 - targetMods.damageReduction);
   finalDamage = Math.round(finalDamage);
 
-  // Учесть щиты
   finalDamage = absorbDamageWithShields(target, finalDamage);
 
   log(`[effectLogic] calculateFinalDamage: base=${baseDamage}, attackerMult=${attackerMods.damageMultiplier}, targetReduction=${targetMods.damageReduction}, afterShields=${finalDamage}`);
   return finalDamage;
 }
 
-/**
- * Рассчитать урон только по модификаторам (без учёта щитов).
- * Возвращает rawDamage, который потом должен быть уменьшен щитами.
- */
 export function calculateRawDamage(
   attacker: Character,
   target: Character,
@@ -338,17 +303,10 @@ export function calculateRawDamage(
   return rawDamage;
 }
 
-/**
- * Проверить наличие эффекта по id.
- */
 export function hasEffect(target: Character, effectId: string): boolean {
   return target.effects.some(e => e.id === effectId);
 }
 
-/**
- * Удалить эффект по id.
- * Возвращает нового персонажа без эффекта.
- */
 export function removeEffect(target: Character, effectId: string): Character {
   const newTarget: Character = {
     ...target,
@@ -359,18 +317,18 @@ export function removeEffect(target: Character, effectId: string): Character {
   const index = newTarget.effects.findIndex(e => e.id === effectId);
   if (index >= 0) {
     const effect = newTarget.effects[index];
-    // Вызов колбэка onRemove
+    
     if (effect.onRemove) {
       log(`Effect ${effect.name} removed from ${newTarget.name}`);
     }
-    // Восстановить оригинальные атаки, если эффект их заменял
+    
     if (effect.originalAttacks) {
       newTarget.attacks = effect.originalAttacks.map(a => ({ ...a }));
       log(`[effectLogic] Восстановлены оригинальные атаки для эффекта ${effect.name} у ${newTarget.name}`);
     } else if (effect.id === 'bear_form' || effect.id === 'berserk') {
       console.warn(`[effectLogic] Эффект ${effect.name} удаляется, но originalAttacks отсутствуют! Атаки могут остаться изменёнными.`);
     }
-    // Убрать щит, если эффект был щитом
+    
     if (effect.shieldAmount) {
       newTarget.shields = Math.max(0, newTarget.shields - effect.shieldAmount);
     }
@@ -380,10 +338,6 @@ export function removeEffect(target: Character, effectId: string): Character {
   return newTarget;
 }
 
-/**
- * Снять эффекты определённого типа (или все дебаффы).
- * Возвращает нового персонажа с отфильтрованными эффектами.
- */
 export function cleanse(target: Character, effectType?: string): Character {
   const newTarget: Character = {
     ...target,
@@ -391,11 +345,10 @@ export function cleanse(target: Character, effectType?: string): Character {
     attacks: target.attacks.map(a => ({ ...a })),
   };
 
-  // Определить, какие эффекты будут удалены
   const effectsToRemove = newTarget.effects.filter(e =>
     effectType ? e.type === effectType : e.type === 'debuff'
   );
-  // Найти первый эффект с сохранёнными атаками
+  
   const effectWithOriginalAttacks = effectsToRemove.find(e => e.originalAttacks);
   if (effectWithOriginalAttacks) {
     newTarget.attacks = effectWithOriginalAttacks.originalAttacks!.map(a => ({ ...a }));
@@ -405,10 +358,10 @@ export function cleanse(target: Character, effectType?: string): Character {
   if (effectType) {
     newTarget.effects = newTarget.effects.filter(e => e.type !== effectType);
   } else {
-    // По умолчанию снимаем все дебаффы
+    
     newTarget.effects = newTarget.effects.filter(e => e.type !== 'debuff');
   }
-  // После очистки проверить оглушение
+  
   const hasStun = newTarget.effects.some(e => e.isStun);
   if (!hasStun) {
     newTarget.isStunned = false;
@@ -417,30 +370,17 @@ export function cleanse(target: Character, effectType?: string): Character {
   return newTarget;
 }
 
-/**
- * Получить текущее значение щитов.
- */
 export function getShieldAmount(target: Character): number {
   return target.shields;
 }
 
-/**
- * Поглотить урон щитами.
- * Возвращает оставшийся урон после поглощения.
- * Не изменяет оригинального персонажа.
- */
 export function absorbDamageWithShields(target: Character, damage: number): number {
   if (target.shields <= 0) return damage;
   const absorbed = Math.min(target.shields, damage);
-  // Не изменяем target.shields, так как это чистая функция
-  // Изменение щитов должно происходить в вызывающем коде через обновление персонажа
+  
   return damage - absorbed;
 }
 
-/**
- * Обновить щиты персонажа после поглощения урона.
- * Возвращает нового персонажа с обновлёнными щитами.
- */
 export function updateShieldsAfterDamage(target: Character, damage: number): Character {
   const newTarget: Character = {
     ...target,

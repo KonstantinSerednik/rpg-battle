@@ -1,7 +1,7 @@
 import type { Effect } from '../types/game';
 
 export const EFFECTS = {
-  // Дебаффы
+  
   BLEEDING: {
     id: 'bleed',
     name: 'Кровотечение',
@@ -122,11 +122,10 @@ export const EFFECTS = {
     priority: 7,
     type: 'debuff' as const,
     modifiers: {
-      damageReduction: -0.25, // отрицательное снижение = увеличение урона
+      damageReduction: -0.25, 
     },
   },
 
-  // Баффы
   STRENGTH: {
     id: 'strength',
     name: 'Повышение урона',
@@ -183,13 +182,12 @@ export const EFFECTS = {
     },
   },
 
-  // Щиты
   SHIELD: {
     id: 'shield',
     name: 'Щит',
     description: 'Поглощает 20 урона',
     icon: 'shield',
-    duration: 999, // практически бесконечно, пока не снимется уроном
+    duration: 999, 
     maxStacks: 1,
     currentStacks: 1,
     priority: 9,
@@ -211,7 +209,6 @@ export const EFFECTS = {
     modifiers: {},
   },
 
-  // Специальные
   INVISIBILITY: {
     id: 'invisibility',
     name: 'Невидимость',
@@ -240,7 +237,6 @@ export const EFFECTS = {
     modifiers: {},
   },
 
-  // Новые эффекты
   DEVASTATION: {
     id: 'devastation',
     name: 'Опустошение',
@@ -291,7 +287,7 @@ export const EFFECTS = {
     priority: 7,
     type: 'buff' as const,
     modifiers: {
-      damageMultiplier: 1.0, // будет обрабатываться отдельно
+      damageMultiplier: 1.0, 
       healingMultiplier: 1.0,
     },
   },
@@ -345,7 +341,6 @@ export const EFFECTS = {
   },
 } satisfies Record<string, Effect>;
 
-// Вспомогательные функции для создания копий эффектов с кастомными параметрами
 export function createEffect(base: Effect, overrides: Partial<Effect>): Effect {
   return { ...base, ...overrides, currentStacks: 1 };
 }

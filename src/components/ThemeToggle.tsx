@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { getSafe, setSafe } from '../utils/storage';
 
 type Theme = 'light' | 'dark';
 
 const ThemeToggle: React.FC = () => {
   const [theme, setTheme] = useState<Theme>(() => {
-    // Проверяем сохранённую тему в localStorage или системные настройки
-    const saved = localStorage.getItem('theme');
-    console.log('Initial theme load: saved=', saved, 'type:', typeof saved, 'full localStorage:', JSON.stringify({...localStorage}));
+    
+    const saved = getSafe('theme');
+    console.log('Initial theme load: saved=', saved, 'type:', typeof saved);
     if (saved === 'dark' || saved === 'light') {
       console.log('Using saved theme:', saved);
       return saved;
@@ -26,9 +27,9 @@ const ThemeToggle: React.FC = () => {
       root.classList.add('theme-light');
       root.classList.remove('theme-dark');
     }
-    localStorage.setItem('theme', theme);
-    console.log('LocalStorage set to:', theme, 'all keys:', Object.keys(localStorage));
-    // Проверим CSS переменные
+    setSafe('theme', theme);
+    console.log('LocalStorage set to:', theme);
+    
     console.log('CSS var --bg:', getComputedStyle(root).getPropertyValue('--bg'));
   }, [theme]);
 

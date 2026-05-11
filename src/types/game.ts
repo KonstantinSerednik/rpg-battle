@@ -1,17 +1,16 @@
 import type { Attack, CharacterPreset } from '../db';
 
 export interface Effect {
-  id: string; // уникальный идентификатор
+  id: string; 
   name: string;
   description: string;
-  icon: string; // название иконки для UI
-  duration: number; // ходы
-  maxStacks?: number; // максимальное количество стаков
+  icon: string; 
+  duration: number; 
+  maxStacks?: number; 
   currentStacks: number;
-  priority: number; // приоритет применения (0-10)
+  priority: number; 
   type: 'buff' | 'debuff' | 'shield' | 'control' | 'special';
   
-  // Модификаторы
   modifiers: {
     damageMultiplier?: number;
     damageReduction?: number;
@@ -21,28 +20,25 @@ export interface Effect {
     dodgeChance?: number;
   };
   
-  // Специальные свойства
   dotDamage?: number;
   hotHealing?: number;
-  shieldAmount?: number; // величина щита
-  isStun?: boolean; // оглушение
-  reflectPercent?: number; // процент отражения урона
+  shieldAmount?: number; 
+  isStun?: boolean; 
+  reflectPercent?: number; 
   
-  // Колбэки (будут реализованы как строки имен функций или игнорироваться)
   onApply?: string;
   onTurnStart?: string;
   onTurnEnd?: string;
   onRemove?: string;
 
-  // Сохранённые оригинальные атаки для эффектов, которые их заменяют (например, bear_form)
   originalAttacks?: Attack[];
 }
 
 export interface Character extends CharacterPreset {
   attacks: Attack[];
-  effects: Effect[]; // активные эффекты
-  shields: number; // текущее значение щитов
-  isStunned: boolean; // оглушён ли персонаж
+  effects: Effect[]; 
+  shields: number; 
+  isStunned: boolean; 
 }
 
 export type GameMode = 'PvP' | 'PvC';
@@ -56,7 +52,6 @@ export type Stage =
   | 'battle'
   | 'winner';
 
-// Запись одного хода для статистики
 export interface TurnRecord {
   turnNumber: number;
   attacker: 1 | 2;
@@ -69,11 +64,10 @@ export interface TurnRecord {
   timestamp: number;
 }
 
-// Сводка по атакам для столбчатой диаграммы
 export interface AttackSummary {
   attackName: string;
   className: string;
-  totalDamage: number; // положительное - урон, отрицательное - исцеление
+  totalDamage: number; 
   count: number;
 }
 
@@ -84,13 +78,12 @@ export interface GameState {
   p2: Character | null;
   turn: 1 | 2;
   log: string;
-  // История боя для статистики
+  
   turnHistory: TurnRecord[];
   attackSummary: AttackSummary[];
   isDraw: boolean;
 }
 
-// Типы действий для редуктора (добавлены для системы эффектов)
 export type GameActionType =
   | 'SET_MODE'
   | 'SET_STAGE'

@@ -8,31 +8,28 @@ export interface SelectionGridProps<T> {
   type: SelectionType;
   items: T[];
   selectedItems: T[];
-  /** Функция для получения уникального ключа элемента */
+  
   getKey: (item: T) => string | number;
-  /** Функция рендеринга карточки элемента */
+  
   renderCard: (item: T, isSelected: boolean, onClick: () => void) => React.ReactNode;
-  /** Обработчик выбора элемента */
+  
   onSelect: (item: T) => void;
-  /** Заголовок компонента */
+  
   title: string;
-  /** Подзаголовок с пояснением */
+  
   subtitle: string;
-  /** Максимальное количество выбираемых элементов (0 для неограниченного) */
+  
   maxSelection?: number;
-  /** Требуется ли подтверждение выбора */
+  
   requiresConfirmation?: boolean;
-  /** Функция подтверждения выбора */
+  
   onConfirm?: () => void;
-  /** Сообщение о статусе выбора */
+  
   selectionStatus?: string;
-  /** Функция для возврата назад (если передана, отображается кнопка "Назад") */
+  
   onBack?: () => void;
 }
 
-/**
- * Универсальный компонент для выбора элементов (персонажей или атак)
- */
 const SelectionGrid = <T,>({
   type,
   items,
@@ -49,20 +46,19 @@ const SelectionGrid = <T,>({
   onBack,
 }: SelectionGridProps<T>) => {
   const handleItemClick = (item: T) => {
-    // Для выбора персонажа - всегда выбираем новый (заменяем предыдущий)
+    
     if (type === 'character') {
       onSelect(item);
       return;
     }
 
-    // Для выбора атак - переключаем выбор
     const isSelected = selectedItems.some(selected => getKey(selected) === getKey(item));
     
     if (isSelected) {
-      // Удаляем из выбранных
+      
       onSelect(item);
     } else {
-      // Проверяем лимит выбора
+      
       if (maxSelection > 0 && selectedItems.length >= maxSelection) {
         return;
       }
@@ -107,8 +103,6 @@ const SelectionGrid = <T,>({
   );
 };
 
-// Вспомогательные функции для рендеринга карточек персонажей
-// eslint-disable-next-line react-refresh/only-export-components
 export const renderCharacterCard = (
   preset: CharacterPreset,
   _isSelected: boolean,
@@ -159,23 +153,21 @@ export const renderCharacterCard = (
   );
 };
 
-// Вспомогательные функции для рендеринга карточек атак
-// eslint-disable-next-line react-refresh/only-export-components
 export const renderAttackCard = (
   attack: Attack,
   isSelected: boolean,
   onClick: () => void
 ) => {
   const getAttackIcon = (attack: Attack) => {
-    if (attack.damage < 0) return <Heart size={18} />; // исцеление
+    if (attack.damage < 0) return <Heart size={18} />; 
     if (attack.isUltimate) return <Zap size={18} />;
     return <Sword size={18} />;
   };
 
   const getDamageColor = (damage: number) => {
-    if (damage < 0) return '#10b981'; // зеленый для исцеления
-    if (damage > 50) return '#ef4444'; // красный для высокого урона
-    return '#f59e0b'; // оранжевый для среднего урона
+    if (damage < 0) return '#10b981'; 
+    if (damage > 50) return '#ef4444'; 
+    return '#f59e0b'; 
   };
 
   const getDamageLabel = (damage: number) => {
@@ -184,7 +176,6 @@ export const renderAttackCard = (
     return 'Урон';
   };
 
-  // Иконки эффектов
   const getEffectIcon = (icon: string) => {
     const iconMap: Record<string, string> = {
       bleed: '🩸',
@@ -212,7 +203,6 @@ export const renderAttackCard = (
     ? `Эффекты: ${attack.appliedEffects!.map(e => e.name).join(', ')} (шанс ${effectChancePercent}%)`
     : '';
 
-  // Описание специальных механик урона
   const getSpecialMechanicDescription = (attack: Attack): string => {
     switch (attack.name) {
       case 'Божественный луч':
@@ -293,8 +283,6 @@ export const renderAttackCard = (
   );
 };
 
-// Утилитная функция для случайного выбора атак (вынесена из дублирующегося кода)
-// eslint-disable-next-line react-refresh/only-export-components
 export const selectRandomAttacks = (className: string, allAttacks: Attack[]): Attack[] => {
   const classAttacks = allAttacks.filter(a =>
     a.className === className && !a.isSecret
@@ -302,15 +290,14 @@ export const selectRandomAttacks = (className: string, allAttacks: Attack[]): At
   const normals = classAttacks.filter(a => !a.isUltimate);
   const ults = classAttacks.filter(a => a.isUltimate);
 
-  // Выбираем 1 случайную ульту
   const selectedUlts = ults.length > 0 ? [ults[Math.floor(Math.random() * ults.length)]] : [];
-  // Выбираем 3 случайные обычные атаки
+  
   const selectedNormals = [...normals]
     .sort(() => 0.5 - Math.random())
     .slice(0, 3 - selectedUlts.length);
 
   const selected = [...selectedNormals, ...selectedUlts];
-  // Если всего атак меньше 4, добавим ещё обычных
+  
   while (selected.length < 4 && normals.length > 0) {
     const extra = normals.find(n => !selected.includes(n));
     if (extra) selected.push(extra);
